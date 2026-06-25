@@ -8,17 +8,34 @@
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(AppRouter.self) private var router
+    @Environment(LibraryStore.self) private var store
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        @Bindable var router = router
+        NavigationStack(path: $router.path) {
+            HomeView()
+                .navigationDestination(for: Route.self) { route in
+                    switch route {
+                    case .processing(let url):
+                        ProcessingView(videoURL: url)
+                    case .results(let id):
+                        if let session = store.session(id: id) {
+                            ResultsView(session: session)
+                        } else {
+                            EmptyStateView(
+                                systemImage: "questionmark.folder",
+                                title: "Session not found",
+                                message: "This analysis is no longer available.")
+                        }
+                    }
+                }
         }
-        .padding()
     }
 }
 
 #Preview {
     ContentView()
+        .environment(AppRouter())
+        .environment(LibraryStore())
 }
