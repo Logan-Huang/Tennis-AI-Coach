@@ -9,6 +9,20 @@
 
 import Foundation
 
+/// The form thresholds the coaching prose speaks to — extracted so
+/// ShotScorer and Narrative use the IDENTICAL numbers (no drifting literals).
+nonisolated enum FormBands {
+    static let kneeIdeal: ClosedRange<Double> = 110...155
+    static let kneeSoft: ClosedRange<Double> = 90...175
+    static let stanceIdeal: ClosedRange<Double> = 0.95...1.9
+    static let stanceSoft: ClosedRange<Double> = 0.6...2.6
+    static let leanMax: Double = 22
+    static let elbowIdeal: ClosedRange<Double> = 75...155
+    static let elbowSoft: ClosedRange<Double> = 55...175
+    /// Below this stroke count, session-level conclusions are provisional.
+    static let minStrokesForConfidence = 4
+}
+
 nonisolated enum CoachingEngine {
 
     static func summarize(frames: [FrameMetrics], strokes: [Stroke]) -> AnalysisSummary {
@@ -45,9 +59,9 @@ nonisolated enum CoachingEngine {
         // Knee (at-stroke median, fall back to global).
         let knee = summary.kneeMinStrokeMed.isFinite ? summary.kneeMinStrokeMed : summary.kneeMinGlobalMed
         if knee.isFinite {
-            if knee > 155 {
+            if knee > FormBands.kneeIdeal.upperBound {
                 focus.append("Bend your knees more during the loading phase — aim for a lower, athletic base (often around 120–145° at contact).")
-            } else if knee < 110 {
+            } else if knee < FormBands.kneeIdeal.lowerBound {
                 focus.append("You get very low on some swings. Keep the knee bend but stay stacked over your base so you don't lose balance.")
             } else {
                 good.append("Knee bend looks generally athletic on many swings.")
@@ -57,9 +71,9 @@ nonisolated enum CoachingEngine {
         // Stance width (at-stroke median, fall back to global).
         let stance = summary.stanceStrokeMed.isFinite ? summary.stanceStrokeMed : summary.stanceGlobalMed
         if stance.isFinite {
-            if stance < 0.95 {
+            if stance < FormBands.stanceIdeal.lowerBound {
                 focus.append("Your base looks narrow. A slightly wider stance will improve balance and let you transfer more power into the shot.")
-            } else if stance > 1.9 {
+            } else if stance > FormBands.stanceIdeal.upperBound {
                 focus.append("Your base can get very wide. A more balanced width keeps you mobile and recovering between shots.")
             } else {
                 good.append("Stance width looks balanced most of the time.")
@@ -69,7 +83,7 @@ nonisolated enum CoachingEngine {
         // Torso lean (at-stroke median, fall back to global).
         let lean = summary.leanAbsStrokeMed.isFinite ? summary.leanAbsStrokeMed : summary.leanAbsGlobalMed
         if lean.isFinite {
-            if lean > 22 {
+            if lean > FormBands.leanMax {
                 focus.append("You lean your torso a lot through contact. Staying more centered and rotating from your core adds consistency.")
             } else {
                 good.append("Torso stays relatively centered on many swings.")
@@ -80,16 +94,16 @@ nonisolated enum CoachingEngine {
         let elbow = summary.elbowStrokeMed
         if elbow.isFinite {
             let arm = hittingArm.displayName.lowercased()
-            if elbow < 75 {
+            if elbow < FormBands.elbowIdeal.lowerBound {
                 focus.append("Your \(arm) hitting-arm elbow looks quite bent. Create space and extend through contact instead of collapsing the arm.")
-            } else if elbow > 155 {
+            } else if elbow > FormBands.elbowIdeal.upperBound {
                 focus.append("Your \(arm) hitting arm can look very straight. Keep a relaxed arm with smooth extension rather than locking it out.")
             } else {
                 good.append("Hitting-arm elbow position looks reasonable on many swings.")
             }
         }
 
-        if summary.strokesDetected < 4 {
+        if summary.strokesDetected < FormBands.minStrokesForConfidence {
             focus.append("Only a few swing moments were detected. Film from the side with your full body visible to capture more strokes.")
         }
         focus.append("For more accurate feedback, film with your full body visible, good lighting, and the camera roughly side-on to the baseline.")
@@ -119,7 +133,8 @@ nonisolated enum CoachingEngine {
         lines.append("- Torso lean (abs): \(fmt(summary.leanAbsStrokeMed.isFinite ? summary.leanAbsStrokeMed : summary.leanAbsGlobalMed))°")
         lines.append("- Stance width ratio: \(fmt(summary.stanceStrokeMed.isFinite ? summary.stanceStrokeMed : summary.stanceGlobalMed))")
         lines.append("- Hitting-arm (\(hittingArm.displayName)) elbow: \(fmt(summary.elbowStrokeMed))°")
-        lines.append("- Peak wrist speed: \(fmt(summary.peakSpeedMed, decimals: 0)) px/s")
+        // Wrist speed is uncalibrated pixels — reported as an internal index only.
+        lines.append("- Peak wrist speed (relative index): \(fmt(summary.peakSpeedMed, decimals: 0))")
         lines.append("")
         lines.append("## What looks good")
         if good.isEmpty {

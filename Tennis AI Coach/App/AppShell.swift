@@ -12,6 +12,7 @@ import SwiftUI
 enum Route: Hashable {
     case processing(videoURL: URL)
     case results(sessionID: UUID)
+    case compare(beforeID: UUID, afterID: UUID)
 }
 
 @Observable
@@ -27,17 +28,14 @@ final class AppRouter {
     func showResults(_ id: UUID) {
         path = [.results(sessionID: id)]
     }
+
+    func showCompare(beforeID: UUID, afterID: UUID) {
+        path.append(.compare(beforeID: beforeID, afterID: afterID))
+    }
 }
 
 // MARK: - Engine environment
 
-private struct AnalysisEngineKey: EnvironmentKey {
-    static let defaultValue: AnalysisEngine = MockEngine()
-}
-
 extension EnvironmentValues {
-    var analysisEngine: AnalysisEngine {
-        get { self[AnalysisEngineKey.self] }
-        set { self[AnalysisEngineKey.self] = newValue }
-    }
+    @Entry var analysisEngine: AnalysisEngine = MockEngine()
 }

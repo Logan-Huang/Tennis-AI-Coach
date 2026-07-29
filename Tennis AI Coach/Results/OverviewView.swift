@@ -2,83 +2,62 @@
 //  OverviewView.swift
 //  Tennis AI Coach
 //
+//  Session medians, folded into the bottom of the Session Report. The old
+//  gradient headline is superseded by SessionHeroCard; the six-tile grid
+//  shrinks to four form metrics with band tinting through one mapper, and
+//  wrist speed is session-relative (never px/s).
+//
 
 import SwiftUI
 
-struct OverviewView: View {
+struct MediansSection: View {
     let result: AnalysisResult
+    /// Median peak speed relative to the session's fastest (NaN when unknown).
+    let relSpeedMedian: Double
 
     private var s: AnalysisSummary { result.summary }
     private var kneeVal: Double { s.kneeMinStrokeMed.isFinite ? s.kneeMinStrokeMed : s.kneeMinGlobalMed }
     private var leanVal: Double { s.leanAbsStrokeMed.isFinite ? s.leanAbsStrokeMed : s.leanAbsGlobalMed }
     private var stanceVal: Double { s.stanceStrokeMed.isFinite ? s.stanceStrokeMed : s.stanceGlobalMed }
 
-    private let columns = [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)]
+    private let columns = [GridItem(.flexible(), spacing: Theme.Spacing.m - 2),
+                           GridItem(.flexible(), spacing: Theme.Spacing.m - 2)]
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 18) {
-                headline
+        VStack(alignment: .leading, spacing: Theme.Spacing.m - 4) {
+            SectionHeader(title: "Session medians")
 
-                LazyVGrid(columns: columns, spacing: 14) {
-                    MetricCard(title: "Knee bend (lowest)", value: Fmt.deg(kneeVal),
-                               systemImage: "figure.cooldown",
-                               tint: status(kneeVal, good: 110...155))
-                    MetricCard(title: "Torso lean", value: Fmt.deg(leanVal),
-                               systemImage: "figure.walk.motion",
-                               tint: leanVal.isFinite ? (leanVal > 22 ? Theme.focus : Theme.good) : Theme.court)
-                    MetricCard(title: "Stance width", value: Fmt.ratio(stanceVal),
-                               systemImage: "arrow.left.and.right",
-                               tint: status(stanceVal, good: 0.95...1.9))
-                    MetricCard(title: "\(result.hittingArm.displayName)-arm elbow",
-                               value: Fmt.deg(s.elbowStrokeMed),
-                               systemImage: "figure.tennis",
-                               tint: status(s.elbowStrokeMed, good: 75...155))
-                    MetricCard(title: "Peak wrist speed", value: Fmt.speed(s.peakSpeedMed),
-                               unit: "px/s", systemImage: "speedometer", tint: Theme.clay)
-                    MetricCard(title: "Duration", value: Fmt.seconds(s.durationS),
-                               systemImage: "clock", tint: Theme.court)
-                }
+            LazyVGrid(columns: columns, spacing: Theme.Spacing.m - 2) {
+                MetricCard(title: "Knee bend", value: Fmt.deg(kneeVal),
+                           systemImage: "figure.cooldown",
+                           tint: bandTint(ShotScorer.bandScore(kneeVal, ideal: FormBands.kneeIdeal, soft: FormBands.kneeSoft)))
+                MetricCard(title: "Torso lean", value: Fmt.deg(leanVal),
+                           systemImage: "figure.walk.motion",
+                           tint: leanVal.isFinite ? (leanVal > FormBands.leanMax ? Theme.focus : Theme.good) : Theme.court)
+                MetricCard(title: "Stance width", value: stanceVal.isFinite ? String(format: "%.2f× hips", stanceVal) : "—",
+                           systemImage: "arrow.left.and.right",
+                           tint: bandTint(ShotScorer.bandScore(stanceVal, ideal: FormBands.stanceIdeal, soft: FormBands.stanceSoft)))
+                MetricCard(title: "Elbow (\(result.hittingArm.displayName.lowercased()))",
+                           value: Fmt.deg(s.elbowStrokeMed),
+                           systemImage: "figure.tennis",
+                           tint: bandTint(ShotScorer.bandScore(s.elbowStrokeMed, ideal: FormBands.elbowIdeal, soft: FormBands.elbowSoft)))
             }
-            .padding()
-        }
-    }
 
-    private var headline: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("\(s.strokesDetected)")
-                        .font(.system(size: 44, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                    Text(s.strokesDetected == 1 ? "stroke detected" : "strokes detected")
-                        .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.85))
-                }
-                Spacer()
-                Image(systemName: "figure.tennis")
-                    .font(.system(size: 50))
-                    .foregroundStyle(.white.opacity(0.9))
+            if relSpeedMedian.isFinite {
+                MetricCard(title: "Median swing speed", value: Fmt.relSpeed(relSpeedMedian),
+                           systemImage: "speedometer", tint: Theme.clay)
             }
-            Text(takeaway)
-                .font(.callout)
-                .foregroundStyle(.white.opacity(0.95))
+
+            // Duration is context, not a stat worth a card.
+            Text("Session length \(Fmt.seconds(s.durationS)) · \(s.framesProcessed) frames analyzed")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.headerGradient)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
-    private var takeaway: String {
-        if let firstFocus = result.coaching.focus.first {
-            return firstFocus
-        }
-        return "Great session — your form looks solid across the board."
-    }
-
-    private func status(_ value: Double, good range: ClosedRange<Double>) -> Color {
-        guard value.isFinite else { return Theme.court }
-        return range.contains(value) ? Theme.good : Theme.watch
+    /// One mapper: band score → status tint (fixes the old per-tile logic drift).
+    private func bandTint(_ score: Double) -> Color {
+        guard score.isFinite else { return Theme.court }
+        return ScoreBand(score: score).color
     }
 }

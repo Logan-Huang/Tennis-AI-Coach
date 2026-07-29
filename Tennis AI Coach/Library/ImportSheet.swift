@@ -40,9 +40,10 @@ struct ImportSheet: View {
         NavigationStack {
             VStack(spacing: 20) {
                 Image(systemName: "video.badge.plus")
-                    .font(.system(size: 52))
-                    .foregroundStyle(Theme.court.gradient)
-                    .padding(.top, 16)
+                    .font(.title)
+                    .foregroundStyle(Theme.court)
+                    .padding(.top, Theme.Spacing.m)
+                    .accessibilityHidden(true)
 
                 Text("Add a tennis clip")
                     .font(.title2.weight(.semibold))
@@ -56,38 +57,42 @@ struct ImportSheet: View {
                     PhotosPicker(selection: $photoItem, matching: .videos, preferredItemEncoding: .current) {
                         Label("Choose from Photos", systemImage: "photo.on.rectangle")
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 6)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Theme.court)
+                    .primaryActionButton()
 
                     Button {
                         showFileImporter = true
                     } label: {
                         Label("Browse Files", systemImage: "folder")
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 6)
                     }
-                    .buttonStyle(.bordered)
-                    .tint(Theme.court)
+                    .secondaryActionButton()
                 }
                 .padding(.horizontal)
 
-                if isLoading {
-                    ProgressView("Preparing video…")
-                        .padding(.top, 8)
-                }
                 if let errorMessage {
-                    Text(errorMessage)
+                    Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
                         .font(.footnote)
                         .foregroundStyle(Theme.focus)
-                        .multilineTextAlignment(.center)
+                        .multilineTextAlignment(.leading)
                         .padding(.horizontal)
                 }
 
                 Spacer()
             }
             .padding()
+            .overlay {
+                if isLoading {
+                    ZStack {
+                        Rectangle().fill(.ultraThinMaterial).ignoresSafeArea()
+                        ProgressView("Preparing video…")
+                            .padding(Theme.Spacing.l)
+                            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+                    }
+                    .transition(.opacity)
+                }
+            }
+            .animation(.smooth(duration: 0.2), value: isLoading)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
@@ -96,6 +101,7 @@ struct ImportSheet: View {
             .navigationTitle("Import")
             .navigationBarTitleDisplayMode(.inline)
         }
+        .presentationDetents([.medium])
         .interactiveDismissDisabled(isLoading)
         .onChange(of: photoItem) { _, newItem in
             guard let newItem else { return }

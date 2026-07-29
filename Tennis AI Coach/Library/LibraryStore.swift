@@ -37,6 +37,9 @@ final class LibraryStore {
     private let encoder = AnalysisCoders.makeEncoder()
     private let decoder = AnalysisCoders.makeDecoder()
 
+    /// Lazily computed, never persisted — legacy session JSON stays untouched.
+    private var scoreCache: [UUID: (session: SessionScore, shots: [ShotScore])] = [:]
+
     init() {
         createDirectories()
         load()
@@ -46,6 +49,30 @@ final class LibraryStore {
 
     func session(id: UUID) -> Session? {
         sessions.first { $0.id == id }
+    }
+
+    /// Per-session scores, cached after first computation.
+    func scores(for session: Session) -> (session: SessionScore, shots: [ShotScore]) {
+        if let cached = scoreCache[session.id] { return cached }
+        let shots = ShotScorer.score(result: session.result)
+        let rollup = ShotScorer.sessionScore(shots)
+        let entry = (session: rollup, shots: shots)
+        scoreCache[session.id] = entry
+        return entry
+    }
+
+    /// Oldest-first cross-session trend (speed-excluded form scores).
+    func progressTrend() -> [ProgressEngine.SessionProgress] {
+        ProgressEngine.trend(sessions: sessions.map {
+            ($0.id, $0.createdAt, scores(for: $0).shots)
+        })
+    }
+
+    /// Recent range + current value per form component.
+    func componentTrends() -> [ProgressEngine.ComponentTrend] {
+        ProgressEngine.componentTrends(sessions: sessions.map {
+            ($0.id, $0.createdAt, scores(for: $0).shots)
+        })
     }
 
     /// Copy the analyzed video into the library, persist the result, and return
@@ -77,6 +104,7 @@ final class LibraryStore {
     }
 
     func delete(_ session: Session) {
+        scoreCache[session.id] = nil
         sessions.removeAll { $0.id == session.id }
         try? fileManager.removeItem(at: recordsDir.appendingPathComponent("\(session.id.uuidString).json"))
         try? fileManager.removeItem(at: session.videoURL)

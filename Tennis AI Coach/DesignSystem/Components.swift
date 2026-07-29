@@ -12,24 +12,25 @@ import SwiftUI
 struct MetricCard: View {
     let title: String
     let value: String
+    let systemImage: String
     var unit: String? = nil
-    var systemImage: String = "gauge.with.dots.needle.bottom.50percent"
     var tint: Color = Theme.court
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             HStack(spacing: 6) {
                 Image(systemName: systemImage)
                     .font(.subheadline)
                     .foregroundStyle(tint)
+                    .accessibilityHidden(true)
                 Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .microLabel()
                     .lineLimit(1)
             }
             HStack(alignment: .firstTextBaseline, spacing: 3) {
                 Text(value)
-                    .font(.system(.title2, design: .rounded).weight(.semibold))
+                    .font(.stat)
+                    .monospacedDigit()
                     .contentTransition(.numericText())
                 if let unit {
                     Text(unit)
@@ -40,6 +41,7 @@ struct MetricCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .cardStyle()
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -65,9 +67,9 @@ struct FeedbackCard: View {
             Spacer(minLength: 0)
         }
         .padding(14)
-        .background(tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(tint.opacity(0.10), in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
                 .strokeBorder(tint.opacity(0.25), lineWidth: 1))
     }
 }
@@ -88,36 +90,25 @@ struct ScoreBadge: View {
     }
 }
 
-// MARK: - Empty state
+// MARK: - Section header
 
-struct EmptyStateView: View {
-    let systemImage: String
+struct SectionHeader: View {
     let title: String
-    let message: String
-    var actionTitle: String? = nil
-    var action: (() -> Void)? = nil
+    var count: Int? = nil
 
     var body: some View {
-        VStack(spacing: 14) {
-            Image(systemName: systemImage)
-                .font(.system(size: 46))
-                .foregroundStyle(Theme.court.gradient)
-            Text(title)
-                .font(.title3.weight(.semibold))
-                .multilineTextAlignment(.center)
-            Text(message)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-            if let actionTitle, let action {
-                Button(actionTitle, action: action)
-                    .buttonStyle(.borderedProminent)
-                    .tint(Theme.court)
-                    .padding(.top, 4)
+        HStack(spacing: Theme.Spacing.s) {
+            Text(title).microLabel()
+            if let count {
+                Text("\(count)")
+                    .font(.caption2.weight(.bold))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
             }
+            Spacer()
         }
-        .padding(28)
-        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
 }
 
@@ -128,6 +119,13 @@ enum Fmt {
     static func deg1(_ x: Double) -> String { x.isFinite ? String(format: "%.1f°", x) : "—" }
     static func ratio(_ x: Double) -> String { x.isFinite ? String(format: "%.2f", x) : "—" }
     static func speed(_ x: Double) -> String { x.isFinite ? String(format: "%.0f", x) : "—" }
+    /// Integer form score; "—" when ungraded. Never decimals — pixel-derived
+    /// data cannot honestly support them.
+    static func score(_ x: Double) -> String { x.isFinite ? String(Int(x.rounded())) : "—" }
+    /// Session-relative swing speed: "92% of your fastest". Never px/s or mph.
+    static func relSpeed(_ ratio: Double) -> String {
+        ratio.isFinite ? "\(Int((ratio * 100).rounded()))% of your fastest" : "—"
+    }
     static func seconds(_ x: Double) -> String { x.isFinite ? String(format: "%.1fs", x) : "—" }
     static func time(_ x: Double) -> String {
         guard x.isFinite else { return "—" }

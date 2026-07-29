@@ -16,30 +16,39 @@ private struct SeriesPoint: Identifiable {
 struct ChartsView: View {
     let result: AnalysisResult
     let playback: PlaybackModel
+    var shotScores: [ShotScore] = []
 
     private var maxTime: Double { result.frames.last?.timeS ?? 1 }
 
+    /// Band color per stroke id — chart markers carry score semantics.
+    private var bandById: [Int: Color] {
+        Dictionary(uniqueKeysWithValues: shotScores.map { ($0.strokeId, $0.band.color) })
+    }
+
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.l) {
                 chartCard(
                     title: "Wrist speed (\(result.hittingArm.displayName) arm)",
-                    subtitle: "Peaks mark detected swings",
+                    subtitle: "Marker color is that swing's score band. Values are relative — pixel units, not real speed.",
                     points: speedPoints,
                     color: Theme.court,
-                    markers: result.strokes.map { ($0.peakTime, $0.peakSpeed) },
-                    unit: "px/s")
+                    markers: result.strokes.map { ($0.peakTime, $0.peakSpeed, bandById[$0.id] ?? Theme.clay) },
+                    unit: "relative")
 
                 chartCard(
                     title: "Knee bend over time",
                     subtitle: "Lower = more bend. Green band is the athletic range.",
                     points: kneePoints,
                     color: Theme.clay,
-                    band: 110...155,
+                    band: FormBands.kneeIdeal,
                     unit: "°")
             }
             .padding()
         }
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle("Metric explorer")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     // MARK: - Chart card
@@ -47,13 +56,21 @@ struct ChartsView: View {
     @ViewBuilder
     private func chartCard(title: String, subtitle: String,
                            points: [SeriesPoint], color: Color,
-                           markers: [(Double, Double)] = [],
+                           markers: [(Double, Double, Color)] = [],
                            band: ClosedRange<Double>? = nil,
                            unit: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title).font(.headline)
             Text(subtitle).font(.caption).foregroundStyle(.secondary)
 
+            if points.count < 2 {
+                ContentUnavailableView {
+                    Label("Not enough tracking data", systemImage: "chart.xyaxis.line")
+                } description: {
+                    Text("This metric couldn't be measured across enough frames.")
+                }
+                .frame(height: 220)
+            } else {
             Chart {
                 if let band {
                     RectangleMark(
@@ -77,13 +94,21 @@ struct ChartsView: View {
                     PointMark(
                         x: .value("Time", marker.0),
                         y: .value("Value", marker.1))
-                        .foregroundStyle(Theme.clay)
+                        .foregroundStyle(marker.2)
                         .symbolSize(70)
                 }
 
                 RuleMark(x: .value("Now", min(playback.currentTime, maxTime)))
-                    .foregroundStyle(.gray.opacity(0.7))
+                    .foregroundStyle(Theme.court.opacity(0.7))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                    .annotation(position: .top, alignment: .leading) {
+                        Text(Fmt.time(playback.currentTime))
+                            .font(.caption2.monospacedDigit().weight(.semibold))
+                            .padding(.horizontal, Theme.Spacing.s - 2)
+                            .padding(.vertical, 2)
+                            .background(Theme.court.opacity(0.12), in: Capsule())
+                            .foregroundStyle(Theme.court)
+                    }
             }
             .chartXAxisLabel("seconds")
             .chartYAxisLabel(unit)
@@ -101,6 +126,7 @@ struct ChartsView: View {
                                     }
                                 })
                 }
+            }
             }
         }
         .cardStyle()

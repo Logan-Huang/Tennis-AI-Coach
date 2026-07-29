@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		02F94BFD2FD2421700D09897 /* Tennis AI Coach.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Tennis AI Coach.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		02F94BFD2FD2421700D09897 /* TennisAI: Swing Coach.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "TennisAI: Swing Coach.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -40,7 +40,7 @@
 		02F94BFE2FD2421700D09897 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				02F94BFD2FD2421700D09897 /* Tennis AI Coach.app */,
+				02F94BFD2FD2421700D09897 /* TennisAI: Swing Coach.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -67,7 +67,7 @@
 			packageProductDependencies = (
 			);
 			productName = "Tennis AI Coach";
-			productReference = 02F94BFD2FD2421700D09897 /* Tennis AI Coach.app */;
+			productReference = 02F94BFD2FD2421700D09897 /* TennisAI: Swing Coach.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -267,7 +267,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "LoganHuang.Tennis-AI-Coach";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = "TennisAI: Swing Coach";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -301,7 +301,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "LoganHuang.Tennis-AI-Coach";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = "TennisAI: Swing Coach";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;

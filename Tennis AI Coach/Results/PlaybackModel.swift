@@ -24,6 +24,14 @@ final class PlaybackModel {
     var isPlaying = false
     var isScrubbing = false
 
+    /// Playback speed for form review. Persists across play/pause.
+    var playbackRate: Float = 1.0 {
+        didSet {
+            player.defaultRate = playbackRate
+            if isPlaying { player.rate = playbackRate }
+        }
+    }
+
     private let times: [Double]
     private var timeObserver: Any?
 
@@ -54,9 +62,21 @@ final class PlaybackModel {
             isPlaying = false
         } else {
             if currentTime >= duration - 0.05 { seek(to: 0) }
+            player.defaultRate = playbackRate
             player.play()
             isPlaying = true
         }
+    }
+
+    /// Step to the nearest analyzed frame ± n (pauses playback — stepping is
+    /// a form-review gesture).
+    func stepFrame(by n: Int) {
+        guard !times.isEmpty else { return }
+        player.pause()
+        isPlaying = false
+        let current = nearestIndex() ?? 0
+        let target = min(times.count - 1, max(0, current + n))
+        seek(to: times[target])
     }
 
     func seek(to t: Double) {

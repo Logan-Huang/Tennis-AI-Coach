@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 @Observable
 @MainActor
@@ -59,8 +60,9 @@ struct ProcessingView: View {
                     Image(systemName: "figure.tennis")
                         .font(.title)
                         .foregroundStyle(Theme.court)
+                        .symbolEffect(.variableColor.iterative, isActive: true)
                     Text("\(Int(model.progress * 100))%")
-                        .font(.system(.title2, design: .rounded).weight(.semibold))
+                        .font(.stat)
                         .contentTransition(.numericText())
                         .monospacedDigit()
                 }
@@ -68,9 +70,11 @@ struct ProcessingView: View {
             .frame(width: 180, height: 180)
 
             VStack(spacing: 6) {
-                Text("Analyzing your strokes")
+                Text(stageTitle)
                     .font(.headline)
-                Text("Detecting body pose and measuring your form, frame by frame.")
+                    .contentTransition(.opacity)
+                    .animation(.smooth(duration: 0.3), value: stageTitle)
+                Text("Everything runs on this phone — the video never leaves it.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -85,29 +89,39 @@ struct ProcessingView: View {
         }
     }
 
+    /// Progress-staged copy: the ring moves and the words move with it.
+    private var stageTitle: String {
+        switch model.progress {
+        case ..<0.15: return "Reading your video…"
+        case ..<0.80: return "Tracking body pose…"
+        case ..<0.95: return "Measuring your form…"
+        default: return "Writing up coaching…"
+        }
+    }
+
     // MARK: - Failure
 
     private func failureView(_ failure: AnalysisError) -> some View {
         VStack(spacing: 18) {
-            EmptyStateView(
-                systemImage: "exclamationmark.triangle.fill",
-                title: "Couldn't analyze this clip",
-                message: failure.errorDescription ?? "Something went wrong.")
+            ContentUnavailableView {
+                Label("Couldn't analyze this clip", systemImage: "exclamationmark.triangle.fill")
+            } description: {
+                Text(failure.errorDescription ?? "Something went wrong.")
+            }
             HStack(spacing: 12) {
                 Button {
                     dismiss()
                 } label: {
                     Text("Back").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
+                .secondaryActionButton()
 
                 Button {
                     attempt += 1
                 } label: {
                     Text("Retry").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Theme.court)
+                .primaryActionButton()
             }
             .padding(.horizontal, 40)
         }
@@ -127,6 +141,7 @@ struct ProcessingView: View {
                     Task { @MainActor in model.progress = p }
                 })
             let session = store.addSession(sourceVideoURL: videoURL, result: result)
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
             router.showResults(session.id)
         } catch is CancellationError {
             // View was dismissed; nothing to do.

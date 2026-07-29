@@ -8,47 +8,70 @@ import AVFoundation
 
 struct SessionCard: View {
     let session: Session
+    /// Session score from the library cache (NaN = ungraded).
+    var score: Double = .nan
+
     @State private var thumbnail: Image?
 
     private var strokeCount: Int { session.result.strokes.count }
 
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: Theme.Spacing.m) {
             thumbnailView
-            VStack(alignment: .leading, spacing: 6) {
-                Text(session.title)
+
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                Text(relativeTitle)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.primary)
-                HStack(spacing: 8) {
-                    ScoreBadge(text: "\(strokeCount) strokes", tint: Theme.court)
-                    ScoreBadge(text: "\(session.result.hittingArm.displayName) arm", tint: Theme.clay)
-                }
+                Text(strokeCount == 1 ? "1 SWING" : "\(strokeCount) SWINGS")
+                    .microLabel()
             }
+
             Spacer(minLength: 0)
+
+            ScoreRing(score: score, size: .row)
+
             Image(systemName: "chevron.right")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(.tertiary)
         }
-        .cardStyle()
+        .interactiveCardStyle()
         .task(id: session.id) { await loadThumbnail() }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityText)
+    }
+
+    private var relativeTitle: String {
+        let relative = session.createdAt.formatted(.relative(presentation: .named))
+        return relative.prefix(1).uppercased() + relative.dropFirst()
+    }
+
+    private var accessibilityText: String {
+        let scorePart = score.isFinite
+            ? "form score \(Int(score.rounded())), \(ScoreBand(score: score).label)"
+            : "not graded"
+        return "Session \(relativeTitle), \(strokeCount) swings, \(scorePart)"
     }
 
     private var thumbnailView: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Theme.courtDeep.opacity(0.15))
+            RoundedRectangle(cornerRadius: Theme.Radius.thumb, style: .continuous)
+                .fill(Theme.courtDeep.opacity(0.12))
             if let thumbnail {
                 thumbnail
                     .resizable()
                     .scaledToFill()
+                    .transition(.opacity)
             } else {
-                Image(systemName: "figure.tennis")
-                    .font(.title2)
-                    .foregroundStyle(Theme.court)
+                RoundedRectangle(cornerRadius: Theme.Radius.thumb, style: .continuous)
+                    .fill(Color(.tertiarySystemFill))
+                    .redacted(reason: .placeholder)
             }
         }
         .frame(width: 64, height: 64)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.thumb, style: .continuous))
+        .animation(.smooth(duration: 0.25), value: thumbnail == nil)
+        .accessibilityHidden(true)
     }
 
     private func loadThumbnail() async {

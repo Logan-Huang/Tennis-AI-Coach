@@ -11,6 +11,7 @@ import SwiftUI
 struct Tennis_AI_CoachApp: App {
     @State private var router = AppRouter()
     @State private var store = LibraryStore()
+    @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
     private let engine = VisionAnalysisEngine()
 
     var body: some Scene {
@@ -20,6 +21,11 @@ struct Tennis_AI_CoachApp: App {
                 .environment(store)
                 .environment(\.analysisEngine, engine)
                 .tint(Theme.court)
+                .fullScreenCover(isPresented: Binding(
+                    get: { !hasSeenOnboarding },
+                    set: { if !$0 { hasSeenOnboarding = true } })) {
+                    OnboardingView { hasSeenOnboarding = true }
+                }
         }
     }
 }

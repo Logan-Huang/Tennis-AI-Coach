@@ -69,6 +69,16 @@ enum AnnotatedVideoExporter {
         let drawScale = max(0.5, oriented.height / 1080.0)
         let estProcessed = max(1, source.estimatedFrameCount / stride)
 
+        // Per-shot scores for burned-in badges around each swing's peak.
+        let shotScores = ShotScorer.score(result: result)
+        let badges: [(peakTime: Double, label: String, color: UIColor)] =
+            zip(result.strokes, shotScores).compactMap { stroke, shot in
+                guard shot.isGraded else { return nil }
+                return (stroke.peakTime,
+                        "SWING \(stroke.id) · \(Int(shot.overall.rounded()))",
+                        bandColor(shot.band))
+            }
+
         var rawIndex = 0
         var processedIndex = 0
 
@@ -88,11 +98,16 @@ enum AnnotatedVideoExporter {
             let orientedCI = CIImage(cvPixelBuffer: pixelBuffer).oriented(source.orientation)
             guard let baseImage = ciContext.createCGImage(orientedCI, from: orientedCI.extent) else { continue }
 
+            let frameTime = metricsByFrame[rawIndex]?.timeS
+            let badge = frameTime.flatMap { t in
+                badges.first { abs($0.peakTime - t) <= 0.4 }
+            }
             let annotated = renderFrame(
                 base: baseImage, size: oriented,
                 pose: posesByFrame[rawIndex],
                 metric: metricsByFrame[rawIndex],
                 hittingArm: result.hittingArm,
+                badge: badge.map { ($0.label, $0.color) },
                 scale: drawScale)
 
             while !input.isReadyForMoreMediaData {
@@ -124,11 +139,24 @@ enum AnnotatedVideoExporter {
 
     // MARK: - Drawing
 
+    private nonisolated static func bandColor(_ band: ScoreBand) -> UIColor {
+        let name: String
+        switch band {
+        case .excellent: name = "Good"
+        case .solid: name = "CourtLight"
+        case .developing: name = "Watch"
+        case .workOn: name = "Focus"
+        case .ungraded: name = "Court"
+        }
+        return UIColor(named: name) ?? .systemGreen
+    }
+
     private nonisolated static func renderFrame(base: CGImage,
                                                 size: CGSize,
                                                 pose: PoseFrame?,
                                                 metric: FrameMetrics?,
                                                 hittingArm: HittingArm,
+                                                badge: (label: String, color: UIColor)?,
                                                 scale: CGFloat) -> CGImage {
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
@@ -140,36 +168,47 @@ enum AnnotatedVideoExporter {
             // Upright source frame (UIImage.draw handles the CG flip).
             UIImage(cgImage: base).draw(in: CGRect(origin: .zero, size: size))
 
-            // Skeleton.
+            // Skeleton — same renderer as the live overlay and share cards.
             if let pose {
-                let pts: [CGPoint?] = pose.points.map { normalized in
-                    normalized.map { CGPoint(x: $0.x * size.width, y: $0.y * size.height) }
-                }
-                cg.setLineCap(.round)
-                cg.setLineWidth(max(2, 3 * scale))
-                cg.setStrokeColor(UIColor.systemGreen.cgColor)
-                for (a, b) in JointMapping.boneIndices {
-                    if a < pts.count, b < pts.count, let pa = pts[a], let pb = pts[b] {
-                        cg.move(to: pa)
-                        cg.addLine(to: pb)
-                        cg.strokePath()
-                    }
-                }
-                let radius = max(2, 4 * scale)
-                cg.setFillColor(UIColor.white.cgColor)
-                for case let point? in pts {
-                    cg.fillEllipse(in: CGRect(
-                        x: point.x - radius, y: point.y - radius,
-                        width: radius * 2, height: radius * 2))
-                }
+                PoseDrawing.draw(pose: pose, in: cg, size: size,
+                                 hittingArm: hittingArm, scale: scale)
             }
 
             // Metric HUD.
             if let metric {
                 drawHUD(metric: metric, hittingArm: hittingArm, size: size, scale: scale)
             }
+
+            // Score badge around each swing's peak.
+            if let badge {
+                drawBadge(badge.label, color: badge.color, size: size, scale: scale)
+            }
         }
         return image.cgImage ?? base
+    }
+
+    private nonisolated static func drawBadge(_ label: String,
+                                              color: UIColor,
+                                              size: CGSize,
+                                              scale: CGFloat) {
+        let fontSize = max(15, 24 * scale)
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: UIFont.monospacedDigitSystemFont(ofSize: fontSize, weight: .bold),
+            .foregroundColor: UIColor.white,
+        ]
+        let attributed = NSAttributedString(string: label, attributes: attrs)
+        let textSize = attributed.size()
+        let padH = 14 * scale, padV = 8 * scale
+        let margin = max(10, 16 * scale)
+        let rect = CGRect(
+            x: size.width - textSize.width - padH * 2 - margin,
+            y: margin,
+            width: textSize.width + padH * 2,
+            height: textSize.height + padV * 2)
+        let path = UIBezierPath(roundedRect: rect, cornerRadius: rect.height / 2)
+        color.withAlphaComponent(0.9).setFill()
+        path.fill()
+        attributed.draw(at: CGPoint(x: rect.minX + padH, y: rect.minY + padV))
     }
 
     private nonisolated static func drawHUD(metric: FrameMetrics,
@@ -177,8 +216,9 @@ enum AnnotatedVideoExporter {
                                             size: CGSize,
                                             scale: CGFloat) {
         func f(_ x: Double, _ d: Int = 0) -> String { x.isFinite ? String(format: "%.\(d)f", x) : "—" }
+        // No px/s in user-facing output — wrist speed is uncalibrated pixels.
         let line1 = "t=\(f(metric.timeS, 2))s   knee L/R=\(f(metric.kneeL))/\(f(metric.kneeR))°"
-        let line2 = "lean=\(f(metric.torsoLean))°   stance=\(f(metric.stanceRatio, 2))   wrist=\(f(metric.wristSpeed(for: hittingArm))) px/s"
+        let line2 = "lean=\(f(metric.torsoLean))°   stance=\(f(metric.stanceRatio, 2))×"
         let text = line1 + "\n" + line2
 
         let fontSize = max(13, 20 * scale)
