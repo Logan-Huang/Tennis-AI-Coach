@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Privacy Policy — TennisAI: Swing Coach</title>
+<title>Privacy Policy for TennisAI: Swing Coach</title>
 <style>
   :root {
     color-scheme: light dark;
@@ -40,7 +40,6 @@
   h2:first-of-type { border-top: 0; padding-top: 0; }
   p { margin: 0 0 1rem; }
   .lede { font-size: 1.08rem; }
-  strong { font-weight: 600; }
   a { color: var(--accent); }
   table { width: 100%; border-collapse: collapse; margin: 0 0 1.25rem; font-size: .96rem; }
   th, td { text-align: left; padding: .7rem .6rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
@@ -53,25 +52,32 @@
 <main>
 
   <h1>Privacy Policy</h1>
-  <p class="updated">TennisAI: Swing Coach &middot; Last updated July 29, 2026</p>
+  <p class="updated">TennisAI: Swing Coach. Last updated July 29, 2026.</p>
 
   <h2>The short version</h2>
   <p class="lede">
-    <strong>TennisAI: Swing Coach does not collect your data.</strong> Everything the app
-    records and analyzes stays on your device. There is no account, no login, no server,
-    and no analytics or advertising code of any kind.
+    TennisAI: Swing Coach does not collect your data. Whatever you record, and whatever
+    the app works out from it, stays on your iPhone or iPad. There is no account and no
+    server. The app contains no analytics or advertising code.
   </p>
 
   <h2>What the app does with your video</h2>
   <p>
-    When you record or import a video, the app analyzes it entirely on your iPhone or iPad
-    using Apple's on-device Vision framework to detect your body position and identify
-    tennis strokes. The video never leaves your device as part of this analysis.
+    When you record a session or import a video, the analysis runs on your device. The app
+    uses Vision, Apple's on-device framework, to read your body position and work out where
+    each stroke happens. Nothing is uploaded to make that work.
   </p>
   <p>
-    Videos, the analysis results derived from them, and your session history are stored in
-    the app's private storage area on your device. You can delete any session from within
-    the app, and deleting the app removes all of it.
+    The app keeps your videos, the results it derives from them, and your session history in
+    its own private storage on the device. No other app can read that storage. You can delete
+    a session from inside the app whenever you want, and deleting the app takes everything
+    with it.
+  </p>
+  <p>
+    Because that storage sits in the app's normal data folder, your sessions are included in
+    your device backups. If you use iCloud Backup, they are backed up to your own iCloud
+    account along with the rest of your apps' data. That backup belongs to you and we have no
+    access to it.
   </p>
 
   <h2>Permissions the app asks for, and why</h2>
@@ -83,69 +89,80 @@
       <tbody>
         <tr>
           <th scope="row">Camera</th>
-          <td>To record your strokes for analysis.</td>
+          <td>To record your strokes so the app can analyze them.</td>
         </tr>
         <tr>
           <th scope="row">Microphone</th>
-          <td>To capture audio alongside your video so playback sounds right.</td>
+          <td>To capture sound along with the video, so playback matches what you filmed.</td>
         </tr>
         <tr>
           <th scope="row">Photo library<br>(add only)</th>
           <td>
-            To save an annotated video or report card to your photo library, when you choose
-            to. This is add-only access &mdash; the app cannot read or browse your existing photos.
+            To save a summary card or an annotated video to your photo library when you ask it
+            to. Add-only means the app can put items into your library but holds no permission
+            to read or browse it.
           </td>
         </tr>
       </tbody>
     </table>
   </div>
   <p>
-    You can revoke any of these at any time in Settings, though the app's recording features
-    will not work without camera access.
+    You can turn any of these off in Settings, though recording will not work without access
+    to the camera.
+  </p>
+  <p>
+    Instead of recording, you can bring in a video you already have, either from Photos or
+    from the Files app. Both of those pickers are run by iOS rather than by the app, which is
+    why neither one needs a read permission: the app is handed only the single video you
+    select and never sees the rest of your library or your documents. Once you pick one, the
+    app copies it into its own storage so it can analyze it, and that copy is treated like any
+    other session.
   </p>
 
   <h2>When you choose to share</h2>
   <p>
-    The app can export a report card, an annotated video, or session data. If you tap Share,
-    iOS shows the standard system share sheet and <strong>you</strong> choose the destination
-    &mdash; Messages, Mail, another app, or saving to Files or Photos. The data goes only where
-    you send it. The developer does not receive a copy and has no visibility into what you
-    share or with whom.
+    The app can export a summary card or an annotated video of a session.
+    Tapping Share opens the standard iOS share sheet, and you pick the destination: Messages,
+    Mail, Files, Photos, or some other app. It goes there and nowhere else. The developer
+    does not receive a copy and has no way to see what you shared or who you sent it to.
   </p>
   <p>
-    If you save to your photo library and have iCloud Photos enabled, Apple may sync that item
-    to your own iCloud account under Apple's privacy policy. That is your account, not ours,
-    and we have no access to it.
+    If you save something to your photo library and have iCloud Photos turned on, Apple may
+    sync that item to your own iCloud account, covered by Apple's privacy policy rather than
+    this one. That account is yours. We have no access to it.
   </p>
 
   <h2>Third-party code</h2>
   <p>
-    There is none. The app uses only frameworks provided by Apple as part of iOS. No analytics
-    SDKs, no advertising networks, no crash reporters, and no third-party vendors of any kind
-    have been added to this app. Consequently, no third party receives data from this app.
+    There is none. The app is built only on frameworks that ship with iOS. No analytics SDK,
+    no ad network, no crash reporter, and no third-party vendor of any kind has been added to
+    it, so there is no third party to receive data from the app.
   </p>
 
   <h2>Tracking</h2>
   <p>
-    The app does not track you. It does not access the advertising identifier (IDFA), does not
-    build a profile of you, and does not link any data to you or your device for advertising or
-    measurement purposes across other companies' apps or websites.
+    The app does not track you. It never reads the advertising identifier (IDFA), it does not
+    build a profile of you, and it does not link anything to you or your device for
+    advertising or measurement across other companies' apps and websites.
   </p>
 
   <h2>Children</h2>
-  <p>The app does not collect data from anyone, including children under 13.</p>
+  <p>The app collects no data from anyone, and that includes children under 13.</p>
 
   <h2>Your data rights</h2>
   <p>
-    Because no data is transmitted off your device, there is nothing for us to retrieve, correct,
-    export, or delete on your behalf. You have direct and complete control: delete individual
-    sessions in the app, or delete the app to remove everything.
+    Since nothing leaves your device, there is nothing held on our side for us to hand over,
+    correct, export, or delete on your behalf. The controls are all yours: delete individual
+    sessions in the app, or delete the app to clear everything it stored. Deleting a session
+    removes its entry and the video the app saved for it. Temporary working files left behind
+    by recording and exporting sit in the app's scratch space, where iOS clears them, and they
+    go along with the app if you delete it.
   </p>
 
   <h2>Changes to this policy</h2>
   <p>
-    If a future version of the app adds a feature that transmits data off the device, this policy
-    will be updated before that version ships, and the app's App Store privacy disclosures will be
+    If a later version of the app ever sends data off the device, this page will say so
+    before that version ships, and the privacy details on the App Store listing will be
     updated to match.
   </p>
 
@@ -155,7 +172,7 @@
     <a href="mailto:loganhtheofficial@gmail.com">loganhtheofficial@gmail.com</a>
   </p>
 
-  <footer>TennisAI: Swing Coach &mdash; Privacy Policy</footer>
+  <footer>TennisAI: Swing Coach privacy policy</footer>
 
 </main>
 </body>
