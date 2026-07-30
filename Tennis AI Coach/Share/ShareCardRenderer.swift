@@ -59,13 +59,6 @@ enum ShareCardRenderer {
         return render(card, named: "session-report")
     }
 
-    /// Renders a single-swing card to a shareable PNG URL.
-    static func renderShotCard(session: Session, shot: ShotScore, stroke: Stroke) async -> URL? {
-        let frame = await annotatedFrame(session: session, at: stroke.peakTime)
-        let card = ShotShareCard(shot: shot, stroke: stroke, frame: frame)
-        return render(card, named: "swing-\(stroke.id)")
-    }
-
     private static func render(_ view: some View, named name: String) -> URL? {
         let renderer = ImageRenderer(content: view)
         renderer.proposedSize = ProposedViewSize(ShareCardMetrics.size)
