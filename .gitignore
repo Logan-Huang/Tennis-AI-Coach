@@ -1,0 +1,36 @@
+# macOS
+.DS_Store
+
+# Xcode: per-user state. Scheme ordering, window layout, breakpoints. Local only.
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+
+# Xcode: build output
+build/
+DerivedData/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM
+*.dSYM.zip
+*.xcarchive
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages/
+
+# Recorded and rendered video. Large binaries do not belong in git, and every
+# one of these is reproducible from the app or the notebook.
+*.mov
+*.MOV
+*.mp4
+*.m4v
+
+# Generated analysis output.
+#
+# IMG_7145_analysis.json is deliberately NOT ignored: Scripts/scorer-harness
+# reads it as its input fixture, so a fresh clone needs it to run the harness.
+*_stats.txt
