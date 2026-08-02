@@ -24,9 +24,12 @@ enum AnalysisPipeline {
         }
 
         let estimator = PoseEstimator(confidenceThreshold: config.jointConfidenceThreshold)
-        var computer = MetricsComputer()
-        var frames: [FrameMetrics] = []
-        var poses: [PoseFrame] = []
+        // Joints are collected for the whole clip first: a wrist position can
+        // only be judged against its neighbours and against the player's own
+        // proportions, and it has to be judged BEFORE any speed is differenced
+        // from it (see WristTrackingGate). Twelve points a frame is nothing.
+        var jointsPerFrame: [[BodyJoint: Pt]] = []
+        var frameTimes: [(rawIndex: Int, timeS: Double)] = []
 
         let estProcessed = max(1, source.estimatedFrameCount / stride)
         var rawIndex = 0
@@ -49,15 +52,8 @@ enum AnalysisPipeline {
                 orientedSize: source.orientedSize)
             let timeS = Double(rawIndex) / source.fps
 
-            let row = computer.makeRow(
-                joints: joints,
-                processedIndex: processedIndex,
-                rawFrameIndex: rawIndex,
-                timeS: timeS,
-                dt: dt,
-                config: config)
-            frames.append(row)
-            poses.append(makePoseFrame(joints: joints, timeS: timeS, orientedSize: source.orientedSize))
+            jointsPerFrame.append(joints)
+            frameTimes.append((rawIndex, timeS))
             processedIndex += 1
 
             if processedIndex % 4 == 0 {
@@ -69,8 +65,28 @@ enum AnalysisPipeline {
         if reader.status == .failed {
             throw AnalysisError.decodeFailed(reader.error?.localizedDescription)
         }
-        guard !frames.isEmpty else { throw AnalysisError.noFramesDecoded }
+        guard !jointsPerFrame.isEmpty else { throw AnalysisError.noFramesDecoded }
         progress(1.0)
+
+        let tracked = WristTrackingGate.clean(jointsPerFrame)
+
+        var computer = MetricsComputer()
+        var frames: [FrameMetrics] = []
+        var poses: [PoseFrame] = []
+        frames.reserveCapacity(tracked.count)
+        poses.reserveCapacity(tracked.count)
+        for (i, joints) in tracked.enumerated() {
+            frames.append(computer.makeRow(
+                joints: joints,
+                processedIndex: i,
+                rawFrameIndex: frameTimes[i].rawIndex,
+                timeS: frameTimes[i].timeS,
+                dt: dt,
+                config: config))
+            poses.append(makePoseFrame(joints: joints,
+                                       timeS: frameTimes[i].timeS,
+                                       orientedSize: source.orientedSize))
+        }
 
         let hittingArm = StrokeDetector.pickHittingArm(frames: frames)
         let strokes = StrokeDetector.detect(
