@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Support for TennisAI: Swing Coach</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff;
+    --fg: #1c1c1e;
+    --muted: #6b6b70;
+    --rule: #e3e3e6;
+    --accent: #2f6f4f;
+    --card: #f6f6f8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #131315;
+      --fg: #ececee;
+      --muted: #9a9aa0;
+      --rule: #2e2e32;
+      --accent: #7fc6a1;
+      --card: #1c1c1f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 17px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  main { max-width: 46rem; margin: 0 auto; padding: 3rem 1.25rem 5rem; }
+  h1 { font-size: 1.9rem; line-height: 1.2; margin: 0 0 .35rem; letter-spacing: -.02em; }
+  .sub { color: var(--muted); font-size: .9rem; margin: 0 0 2.5rem; }
+  h2 {
+    font-size: 1.15rem; margin: 2.5rem 0 .75rem; letter-spacing: -.01em;
+    padding-top: 1.5rem; border-top: 1px solid var(--rule);
+  }
+  h2:first-of-type { border-top: 0; padding-top: 0; }
+  h3 { font-size: 1rem; margin: 1.75rem 0 .4rem; }
+  p { margin: 0 0 1rem; }
+  ul { margin: 0 0 1rem; padding-left: 1.25rem; }
+  li { margin-bottom: .4rem; }
+  a { color: var(--accent); }
+  .card {
+    background: var(--card); border: 1px solid var(--rule);
+    border-radius: 12px; padding: 1.1rem 1.25rem; margin: 0 0 1.5rem;
+  }
+  .card p:last-child { margin-bottom: 0; }
+  footer { margin-top: 3.5rem; padding-top: 1.25rem; border-top: 1px solid var(--rule); color: var(--muted); font-size: .9rem; }
+</style>
+</head>
+<body>
+<main>
+
+  <h1>Support</h1>
+  <p class="sub">TennisAI: Swing Coach</p>
+
+  <div class="card">
+    <p>
+      Questions, problems, or something the app got wrong? Email
+      <a href="mailto:loganhtheofficial@gmail.com">loganhtheofficial@gmail.com</a>.
+      It helps to say which iPhone you have, what iOS version it is running, and
+      roughly how the video was filmed.
+    </p>
+  </div>
+
+  <h2>Getting good results</h2>
+  <p>
+    The app works from a video of you playing, so the filming matters more than
+    anything else you can change.
+  </p>
+  <ul>
+    <li>Film from the side, level with you, rather than from behind or in front.</li>
+    <li>Keep your whole body in frame for the entire swing, feet included.</li>
+    <li>Film from your hitting side if you can. If your body is between the camera
+        and your racquet arm, that arm gets hidden at exactly the moment that
+        matters most.</li>
+    <li>Shoot in reasonable light. A blurred arm is a hard arm to track.</li>
+    <li>A handful of clean groundstrokes reads better than a long rally at the
+        far end of the court.</li>
+  </ul>
+
+  <h2>Common questions</h2>
+
+  <h3>It says it could not track a player</h3>
+  <p>
+    Nobody was found in the video, or the person found was too small or too
+    obscured to measure. Refilm closer, with your full body in frame and better
+    light. A busy background with other people in it can also confuse the
+    tracking, since the app follows one person.
+  </p>
+
+  <h3>It counted the wrong number of swings</h3>
+  <p>
+    Swings are found from the speed of your hitting wrist, so anything that hides
+    that wrist from the camera can cost you a swing or add one. Filming from your
+    hitting side is the single biggest improvement. If it keeps happening on a
+    particular video, email it over and it can be looked at directly.
+  </p>
+
+  <h3>Why can I not compare swing speed between two videos?</h3>
+  <p>
+    Speed is measured in pixels, not miles per hour, because the app has no way
+    to know how far away the camera was. That makes speed meaningful within one
+    video and meaningless between two filmed from different distances. This is
+    why swing speed is left out of the trend line and out of session comparisons,
+    which use only the form angles, and those do carry across videos.
+  </p>
+
+  <h3>Does it know a forehand from a backhand?</h3>
+  <p>
+    No. The app measures your body, not your racquet or the ball. It does not
+    label the type of shot, and it does not see where the ball went.
+  </p>
+
+  <h3>How do I delete a session?</h3>
+  <p>
+    Swipe or long press the session in your library and choose Delete. That
+    removes the video and its results from your device. Deleting the app removes
+    everything at once.
+  </p>
+
+  <h3>Where does my video go?</h3>
+  <p>
+    Nowhere. Everything is analyzed on your iPhone and stays there. There is no
+    account and no server. See the
+    <a href="../">privacy policy</a> for the full detail.
+  </p>
+
+  <h2>Requirements</h2>
+  <p>
+    iPhone or iPad running iOS 26.5 or later. Analysis uses Apple's on-device
+    Vision framework and needs a physical device, so it does not run in the iOS
+    Simulator.
+  </p>
+
+  <footer>
+    TennisAI: Swing Coach support. Read the <a href="../">privacy policy</a>.
+  </footer>
+
+</main>
+</body>
+</html>

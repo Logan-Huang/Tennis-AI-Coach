@@ -254,6 +254,7 @@
 				DEVELOPMENT_TEAM = 9UJHQ5349H;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Tennis AI Coach uses the camera to record your strokes for analysis.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Tennis AI Coach records audio with your video so playback matches your session.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Tennis AI Coach can save your annotated video to your photo library.";
@@ -289,6 +290,7 @@
 				DEVELOPMENT_TEAM = 9UJHQ5349H;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Tennis AI Coach uses the camera to record your strokes for analysis.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Tennis AI Coach records audio with your video so playback matches your session.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Tennis AI Coach can save your annotated video to your photo library.";
