@@ -87,6 +87,14 @@ nonisolated enum StrokeDetector {
     /// actually are — at the 98th percentile the same two runs agree, "right" by
     /// 25% and 37%. Percentile rather than maximum so one surviving outlier on
     /// either wrist cannot decide it.
+    /// Compared over whatever frames each wrist survived, deliberately.
+    /// Pairing the samples — comparing only frames where both wrists were
+    /// measured — is the more principled comparison and does pick the racquet
+    /// arm more often. It was tried and reverted: on a clip where Vision loses
+    /// the hitting wrist through a swing, naming that arm correctly means
+    /// reporting the swing not at all, whereas following the arm that was
+    /// actually tracked still finds it. Losing a swing is worse than naming the
+    /// wrong wrist, because nothing in the report reveals it.
     static func pickHittingArm(frames: [FrameMetrics]) -> HittingArm {
         let l = frames.map(\.wristSpeedL).filter { $0.isFinite }
         let r = frames.map(\.wristSpeedR).filter { $0.isFinite }
@@ -130,7 +138,14 @@ nonisolated enum StrokeDetector {
     /// than `minGap` collapse to the faster of the two unconditionally, and
     /// maxima more than `mergeGap` apart are always separate strokes. Samples
     /// above `ceiling` are mis-tracking rather than swings and are ignored.
+    /// `tracked` marks the samples Vision actually measured. The speeds handed
+    /// in are zero-filled, so a frame where the wrist was lost is indistinguishable
+    /// from one where the wrist held still — and "held still" is exactly the
+    /// evidence the hysteresis needs to call the next peak a separate swing.
+    /// A gap in the data is not evidence the arm stopped, so untracked samples
+    /// neither lower the valley nor support a peak.
     static func detectPeaks1d(_ y: [Double],
+                              tracked: [Bool],
                               thresh: Double,
                               reset: Double,
                               ceiling: Double,
@@ -139,10 +154,14 @@ nonisolated enum StrokeDetector {
         var peaks: [Int] = []
         guard y.count > 2 else { return peaks }
         let gap = max(1, minGap)
-        var valley = Double.infinity   // lowest speed seen since the last accepted peak
+        let isTracked = { (i: Int) in i < tracked.count ? tracked[i] : true }
+        var valley = Double.infinity   // lowest *measured* speed since the last peak
         for i in 1..<(y.count - 1) {
-            guard y[i].isFinite else { continue }
-            let isMax = y[i] > thresh && y[i] <= ceiling
+            guard y[i].isFinite, isTracked(i) else { continue }
+            // A peak needs at least one real neighbour: between two dropouts,
+            // the zero-fill makes any surviving sample a local maximum.
+            let hasNeighbour = isTracked(i - 1) || isTracked(i + 1)
+            let isMax = y[i] > thresh && y[i] <= ceiling && hasNeighbour
                 && y[i] >= y[i - 1] && y[i] >= y[i + 1]
             guard isMax else {
                 valley = Swift.min(valley, y[i])
@@ -174,6 +193,7 @@ nonisolated enum StrokeDetector {
 
         let speedRaw = frames.map { $0.wristSpeed(for: hittingArm) }
         let speed = speedRaw.map { $0.isFinite ? $0 : 0.0 }   // nan_to_num(..., 0)
+        let tracked = speedRaw.map(\.isFinite)
 
         let samplesPerSecond = fps / Double(sampleStride)
         let minGap = NanStats.pythonRound(0.45 * samplesPerSecond)
@@ -193,6 +213,7 @@ nonisolated enum StrokeDetector {
         let thresh = max(300.0, peakFraction * reference, quietMultiple * ordinary)
 
         let peaks = detectPeaks1d(speed,
+                                  tracked: tracked,
                                   thresh: thresh,
                                   reset: resetFraction * thresh,
                                   ceiling: spikeRatio * reference,
