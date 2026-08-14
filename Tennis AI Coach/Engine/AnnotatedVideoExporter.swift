@@ -19,8 +19,20 @@ enum AnnotatedVideoExporter {
                                    result: AnalysisResult,
                                    progress: @Sendable (Double) -> Void) async throws -> URL {
         let oriented = source.orientedSize
-        let width = Int(oriented.width.rounded())
-        let height = Int(oriented.height.rounded())
+        guard oriented.width > 0, oriented.height > 0 else {
+            throw AnalysisError.exportFailed("Invalid video size.")
+        }
+
+        // The export is capped at 1080p. A 4K frame costs about 33 MB three
+        // times over — decoded, drawn, and encoded — and a phone recording at
+        // 60fps supplies hundreds of them. Every destination the clip can be
+        // shared to recompresses it well below this anyway, so the resolution
+        // buys nothing and costs the memory the render was being killed for.
+        let longEdge = max(oriented.width, oriented.height)
+        let fit = min(1.0, 1920.0 / longEdge)
+        let width = evenSide(oriented.width * fit)
+        let height = evenSide(oriented.height * fit)
+        let exportSize = CGSize(width: Double(width), height: Double(height))
         guard width > 0, height > 0 else { throw AnalysisError.exportFailed("Invalid video size.") }
 
         let stride = max(1, result.meta.sampleStride)
@@ -64,9 +76,11 @@ enum AnnotatedVideoExporter {
         let metricsByFrame = Dictionary(
             uniqueKeysWithValues: result.frames.map { ($0.frameIndex, $0) })
 
-        let ciContext = CIContext()
+        // Intermediates are never reused across frames here, so caching them
+        // only grows the footprint.
+        let ciContext = CIContext(options: [.cacheIntermediates: false])
         let outFPS = source.fps / Double(stride)
-        let drawScale = max(0.5, oriented.height / 1080.0)
+        let drawScale = max(0.5, exportSize.height / 1080.0)
         let estProcessed = max(1, source.estimatedFrameCount / stride)
 
         // Per-shot scores for burned-in badges around each swing's peak.
@@ -82,44 +96,65 @@ enum AnnotatedVideoExporter {
         var rawIndex = 0
         var processedIndex = 0
 
-        while reader.status == .reading {
-            guard let sample = output.copyNextSampleBuffer() else { break }
-            defer { rawIndex += 1 }
+        var reachedEnd = false
 
+        while reader.status == .reading, !reachedEnd {
             if Task.isCancelled {
                 reader.cancelReading()
                 input.markAsFinished()
                 writer.cancelWriting()
                 throw AnalysisError.cancelled
             }
-            if rawIndex % stride != 0 { continue }
-            guard let pixelBuffer = CMSampleBufferGetImageBuffer(sample) else { continue }
-
-            let orientedCI = CIImage(cvPixelBuffer: pixelBuffer).oriented(source.orientation)
-            guard let baseImage = ciContext.createCGImage(orientedCI, from: orientedCI.extent) else { continue }
-
-            let frameTime = metricsByFrame[rawIndex]?.timeS
-            let badge = frameTime.flatMap { t in
-                badges.first { abs($0.peakTime - t) <= 0.4 }
-            }
-            let annotated = renderFrame(
-                base: baseImage, size: oriented,
-                pose: posesByFrame[rawIndex],
-                metric: metricsByFrame[rawIndex],
-                hittingArm: result.hittingArm,
-                badge: badge.map { ($0.label, $0.color) },
-                scale: drawScale)
-
+            // Waiting for the encoder has to happen out here: `await` cannot
+            // cross into the non-escaping closure below.
             while !input.isReadyForMoreMediaData {
                 try await Task.sleep(nanoseconds: 5_000_000)
             }
-            guard let pool = adaptor.pixelBufferPool,
-                  let outBuffer = makePixelBuffer(from: annotated, pool: pool, width: width, height: height) else {
-                continue
+
+            // One pool per frame. Without it the decoded sample, the CGImage,
+            // the rendered frame and the output buffer all stay alive until the
+            // loop ends, because nothing in a tight loop inside an async
+            // function drains the enclosing pool. Over a few hundred frames
+            // that reaches gigabytes, and the app is killed with no crash
+            // report — it simply disappears.
+            autoreleasepool {
+                guard let sample = output.copyNextSampleBuffer() else {
+                    reachedEnd = true
+                    return
+                }
+                let index = rawIndex
+                rawIndex += 1
+                guard index % stride == 0,
+                      let pixelBuffer = CMSampleBufferGetImageBuffer(sample) else { return }
+
+                // Scale on the GPU while it is still a CIImage, so a
+                // full-resolution CGImage is never materialised.
+                let orientedCI = CIImage(cvPixelBuffer: pixelBuffer).oriented(source.orientation)
+                let shrink = exportSize.width / orientedCI.extent.width
+                let sourceCI = shrink < 1
+                    ? orientedCI.transformed(by: CGAffineTransform(scaleX: shrink, y: shrink))
+                    : orientedCI
+                guard let baseImage = ciContext.createCGImage(sourceCI, from: sourceCI.extent) else { return }
+
+                let frameTime = metricsByFrame[index]?.timeS
+                let badge = frameTime.flatMap { t in
+                    badges.first { abs($0.peakTime - t) <= 0.4 }
+                }
+                let annotated = renderFrame(
+                    base: baseImage, size: exportSize,
+                    pose: posesByFrame[index],
+                    metric: metricsByFrame[index],
+                    hittingArm: result.hittingArm,
+                    badge: badge.map { ($0.label, $0.color) },
+                    scale: drawScale)
+
+                guard let pool = adaptor.pixelBufferPool,
+                      let outBuffer = makePixelBuffer(from: annotated, pool: pool,
+                                                      width: width, height: height) else { return }
+                let pts = CMTimeMakeWithSeconds(Double(processedIndex) / outFPS, preferredTimescale: 600)
+                adaptor.append(outBuffer, withPresentationTime: pts)
+                processedIndex += 1
             }
-            let pts = CMTimeMakeWithSeconds(Double(processedIndex) / outFPS, preferredTimescale: 600)
-            adaptor.append(outBuffer, withPresentationTime: pts)
-            processedIndex += 1
 
             if processedIndex % 4 == 0 {
                 progress(min(0.99, Double(processedIndex) / Double(estProcessed)))
@@ -138,6 +173,12 @@ enum AnnotatedVideoExporter {
     }
 
     // MARK: - Drawing
+
+    /// H.264 requires even dimensions, so round down to one.
+    private nonisolated static func evenSide(_ value: Double) -> Int {
+        let n = Int(value.rounded())
+        return n - (n % 2)
+    }
 
     private nonisolated static func bandColor(_ band: ScoreBand) -> UIColor {
         let name: String
