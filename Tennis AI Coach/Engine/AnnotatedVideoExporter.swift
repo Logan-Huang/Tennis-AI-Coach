@@ -73,8 +73,11 @@ enum AnnotatedVideoExporter {
         // Index cached data by raw frame index.
         let posesByFrame = Dictionary(
             zip(result.frames.map(\.frameIndex), result.poses), uniquingKeysWith: { a, _ in a })
+        // Both keyed by raw frame index, and both tolerate a repeat. A stored
+        // result is only ever read back here, so a duplicated index from an odd
+        // clip should cost a frame's annotation, not the whole export.
         let metricsByFrame = Dictionary(
-            uniqueKeysWithValues: result.frames.map { ($0.frameIndex, $0) })
+            result.frames.map { ($0.frameIndex, $0) }, uniquingKeysWith: { a, _ in a })
 
         // Intermediates are never reused across frames here, so caching them
         // only grows the footprint.
@@ -97,8 +100,9 @@ enum AnnotatedVideoExporter {
         var processedIndex = 0
 
         var reachedEnd = false
+        var appendFailed = false
 
-        while reader.status == .reading, !reachedEnd {
+        while reader.status == .reading, !reachedEnd, !appendFailed {
             if Task.isCancelled {
                 reader.cancelReading()
                 input.markAsFinished()
@@ -152,13 +156,26 @@ enum AnnotatedVideoExporter {
                       let outBuffer = makePixelBuffer(from: annotated, pool: pool,
                                                       width: width, height: height) else { return }
                 let pts = CMTimeMakeWithSeconds(Double(processedIndex) / outFPS, preferredTimescale: 600)
-                adaptor.append(outBuffer, withPresentationTime: pts)
+                guard adaptor.append(outBuffer, withPresentationTime: pts) else {
+                    // Carrying on here would finish the write and hand back a
+                    // video that silently stops early.
+                    appendFailed = true
+                    return
+                }
                 processedIndex += 1
             }
 
             if processedIndex % 4 == 0 {
                 progress(min(0.99, Double(processedIndex) / Double(estProcessed)))
             }
+        }
+
+        if appendFailed {
+            reader.cancelReading()
+            input.markAsFinished()
+            writer.cancelWriting()
+            throw AnalysisError.exportFailed(
+                writer.error?.localizedDescription ?? "A frame couldn't be written.")
         }
 
         input.markAsFinished()
