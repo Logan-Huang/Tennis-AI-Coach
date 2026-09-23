@@ -159,7 +159,7 @@ marked `nonisolated` and the analysis loop runs off the main actor. Only
 ## Requirements
 
 - **Xcode 26** (iOS 26.5 SDK)
-- A device or simulator on **iOS 26.5+** — but see the note below: pose
+- A device or simulator on **iOS 26.0+** — but see the note below: pose
   estimation requires a **physical device**.
 - Swift 5 language mode.
 
