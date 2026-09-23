@@ -12,8 +12,13 @@ import SwiftUI
 struct Session: Identifiable, Sendable {
     let id: UUID
     var createdAt: Date
-    var videoURL: URL
+    /// `nil` once the clip has been discarded to reclaim space. The analysis is
+    /// a rounding error next to the video it came from, so a session outlives
+    /// its footage: the scores, the trend and the comparison all still work.
+    var videoURL: URL?
     var result: AnalysisResult
+
+    var hasVideo: Bool { videoURL != nil }
 
     var title: String {
         createdAt.formatted(date: .abbreviated, time: .shortened)
@@ -43,6 +48,7 @@ final class LibraryStore {
     init() {
         createDirectories()
         load()
+        purgeWorkingFiles()
     }
 
     // MARK: - Public API
@@ -107,7 +113,56 @@ final class LibraryStore {
         scoreCache[session.id] = nil
         sessions.removeAll { $0.id == session.id }
         try? fileManager.removeItem(at: recordsDir.appendingPathComponent("\(session.id.uuidString).json"))
-        try? fileManager.removeItem(at: session.videoURL)
+        if let videoURL = session.videoURL {
+            try? fileManager.removeItem(at: videoURL)
+        }
+    }
+
+    // MARK: - Storage
+
+    /// Throw away the clip and keep everything measured from it. A session's
+    /// video is around three hundred times the size of its analysis, so this
+    /// reclaims effectively all of the space while the score, the coaching and
+    /// the session's place in the trend survive untouched.
+    func discardVideo(_ session: Session) {
+        guard let videoURL = session.videoURL else { return }
+        try? fileManager.removeItem(at: videoURL)
+        if let i = sessions.firstIndex(where: { $0.id == session.id }) {
+            sessions[i].videoURL = nil
+        }
+    }
+
+    /// Bytes the clip occupies, or zero once it has been discarded.
+    func videoBytes(_ session: Session) -> Int64 {
+        guard let url = session.videoURL,
+              let size = try? fileManager.attributesOfItem(atPath: url.path)[.size] as? Int64
+        else { return 0 }
+        return size
+    }
+
+    var totalVideoBytes: Int64 {
+        sessions.reduce(0) { $0 + videoBytes($1) }
+    }
+
+    var sessionsWithVideo: Int {
+        sessions.count { $0.hasVideo }
+    }
+
+    /// Recording, importing and exporting each leave a full-size copy behind in
+    /// the app's scratch space. iOS reclaims it eventually, on its own schedule,
+    /// which on a phone full of sessions is far too late to be useful. Cleared
+    /// at launch, when nothing is mid-flight.
+    func purgeWorkingFiles() {
+        let tmp = fileManager.temporaryDirectory
+        guard let files = try? fileManager.contentsOfDirectory(
+            at: tmp, includingPropertiesForKeys: nil) else { return }
+        for file in files {
+            let name = file.lastPathComponent
+            guard name.hasPrefix("rec_") || name.hasPrefix("import_")
+                    || name.hasPrefix("annotated_") || name.hasPrefix("TennisAICoach-")
+            else { continue }
+            try? fileManager.removeItem(at: file)
+        }
     }
 
     // MARK: - Persistence
@@ -132,10 +187,13 @@ final class LibraryStore {
         for file in files where file.pathExtension == "json" {
             guard let data = try? Data(contentsOf: file),
                   let record = try? decoder.decode(SessionRecord.self, from: data) else { continue }
+            // A missing clip used to drop the whole session, taking its score
+            // and its place in the trend with it. Now it just means the video
+            // was discarded.
             let videoURL = videosDir.appendingPathComponent(record.videoFileName)
-            guard fileManager.fileExists(atPath: videoURL.path) else { continue }
+            let stored = fileManager.fileExists(atPath: videoURL.path) ? videoURL : nil
             loaded.append(Session(id: record.id, createdAt: record.createdAt,
-                                  videoURL: videoURL, result: record.result))
+                                  videoURL: stored, result: record.result))
         }
         sessions = loaded.sorted { $0.createdAt > $1.createdAt }
     }

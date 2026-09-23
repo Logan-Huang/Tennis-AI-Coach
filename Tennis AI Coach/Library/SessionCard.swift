@@ -62,6 +62,12 @@ struct SessionCard: View {
                     .resizable()
                     .scaledToFill()
                     .transition(.opacity)
+            } else if !session.hasVideo {
+                // Clip discarded to save space. The analysis behind it is intact,
+                // so this reads as a kept session rather than a broken one.
+                Image(systemName: "chart.bar.doc.horizontal")
+                    .font(.system(size: 22))
+                    .foregroundStyle(Theme.court.opacity(0.5))
             } else {
                 RoundedRectangle(cornerRadius: Theme.Radius.thumb, style: .continuous)
                     .fill(Color(.tertiarySystemFill))
@@ -75,7 +81,8 @@ struct SessionCard: View {
     }
 
     private func loadThumbnail() async {
-        let asset = AVURLAsset(url: session.videoURL)
+        guard let videoURL = session.videoURL else { return }
+        let asset = AVURLAsset(url: videoURL)
         let generator = AVAssetImageGenerator(asset: asset)
         generator.appliesPreferredTrackTransform = true
         generator.maximumSize = CGSize(width: 256, height: 256)

@@ -183,11 +183,31 @@ struct ResultsView: View {
         .onDisappear { playback.cleanup() }
     }
 
+    @ViewBuilder
     private var videoCard: some View {
-        VideoOverlayPlayerView(
-            playback: playback,
-            strokeTimes: result.strokes.map(\.peakTime),
-            embedded: true)
+        if playback.hasVideo {
+            VideoOverlayPlayerView(
+                playback: playback,
+                strokeTimes: result.strokes.map(\.peakTime),
+                embedded: true)
+        } else {
+            // The clip is gone but everything measured from it is still here,
+            // so say that plainly rather than showing a dead player.
+            VStack(spacing: Theme.Spacing.s) {
+                Image(systemName: "video.slash")
+                    .font(.system(size: 28))
+                    .foregroundStyle(.secondary)
+                Text("Video removed to free up space")
+                    .font(.subheadline.weight(.semibold))
+                Text("The scores, coaching and trend below all came from this clip and are unchanged. Record a new session to review footage again.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(Theme.Spacing.l)
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        }
     }
 
     /// The chronologically previous session, if any (sessions are newest-first).

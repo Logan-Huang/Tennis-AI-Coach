@@ -55,13 +55,18 @@ struct ExportSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: Theme.Spacing.m) {
-                Picker("Share as", selection: $tab) {
-                    ForEach(Tab.allCases) { t in
-                        Text(t.rawValue).tag(t)
+                // Re-rendering the annotated clip needs the clip. Once it has
+                // been discarded the card is all that can be produced, so the
+                // tab is dropped rather than offered and then failed.
+                if session.hasVideo {
+                    Picker("Share as", selection: $tab) {
+                        ForEach(Tab.allCases) { t in
+                            Text(t.rawValue).tag(t)
+                        }
                     }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal)
                 }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
 
                 switch tab {
                 case .card: cardTab
@@ -240,11 +245,15 @@ struct ExportSheet: View {
         withAnimation(.snappy) { model.videoPhase = .exporting }
         model.progress = 0
         model.saveMessage = nil
+        guard let sourceURL = session.videoURL else {
+            model.videoPhase = .failed("This session's video was removed to free up space.")
+            return
+        }
         Task {
             do {
                 let url = try await engine.exportAnnotatedVideo(
                     result: session.result,
-                    sourceURL: session.videoURL,
+                    sourceURL: sourceURL,
                     progress: { p in Task { @MainActor in model.progress = p } })
                 withAnimation(.snappy) { model.videoPhase = .done(url) }
             } catch {

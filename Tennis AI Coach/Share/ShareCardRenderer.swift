@@ -15,7 +15,9 @@ enum ShareCardRenderer {
 
     /// Best-shot frame with skeleton, oriented and full-resolution.
     static func annotatedFrame(session: Session, at time: Double) async -> UIImage? {
-        let asset = AVURLAsset(url: session.videoURL)
+        // No clip means no frame to grab. The cards already handle a nil image.
+        guard let videoURL = session.videoURL else { return nil }
+        let asset = AVURLAsset(url: videoURL)
         let generator = AVAssetImageGenerator(asset: asset)
         generator.appliesPreferredTrackTransform = true
         generator.requestedTimeToleranceBefore = .zero

@@ -35,9 +35,15 @@ final class PlaybackModel {
     private let times: [Double]
     private var timeObserver: Any?
 
-    init(videoURL: URL, frames: [FrameMetrics], poses: [PoseFrame],
+    /// `videoURL` is nil for a session whose clip has been discarded. The model
+    /// still carries the poses and metrics, so everything except playback keeps
+    /// working; callers check `hasVideo` before showing the player.
+    let hasVideo: Bool
+
+    init(videoURL: URL?, frames: [FrameMetrics], poses: [PoseFrame],
          videoSize: CGSize, duration: Double, hittingArm: HittingArm) {
-        self.player = AVPlayer(url: videoURL)
+        self.hasVideo = videoURL != nil
+        self.player = videoURL.map { AVPlayer(url: $0) } ?? AVPlayer()
         self.frames = frames
         self.poses = poses
         self.times = frames.map(\.timeS)

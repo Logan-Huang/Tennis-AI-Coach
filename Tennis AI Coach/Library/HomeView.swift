@@ -19,6 +19,7 @@ struct HomeView: View {
     @State private var showRecord = false
     @State private var showComparePicker = false
     @State private var sessionToDelete: Session?
+    @State private var showClearVideos = false
 
     // Computed off the first render via .task — scoring is cheap but not free.
     @State private var trend: [ProgressEngine.SessionProgress] = []
@@ -40,6 +41,8 @@ struct HomeView: View {
                 if store.sessions.count >= 2 {
                     compareRow
                 }
+
+                storageCard
 
                 if !store.sessions.isEmpty {
                     sessionList
@@ -86,6 +89,20 @@ struct HomeView: View {
             Button("Cancel", role: .cancel) { sessionToDelete = nil }
         } message: {
             Text("The video and its analysis are removed from your library.")
+        }
+        .confirmationDialog("Remove every video?",
+                            isPresented: $showClearVideos,
+                            titleVisibility: .visible) {
+            Button("Free up \(Self.sizeText(store.totalVideoBytes))", role: .destructive) {
+                withAnimation(.snappy) {
+                    for session in store.sessions where session.hasVideo {
+                        store.discardVideo(session)
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Your sessions, scores, coaching and trend all stay. Only the footage goes, and it can't be recovered.")
         }
     }
 
@@ -196,6 +213,47 @@ struct HomeView: View {
         .buttonStyle(CardButtonStyle())
     }
 
+    // MARK: - Storage
+
+    /// A session's video is roughly three hundred times the size of the analysis
+    /// taken from it, so the library is almost entirely footage. This only
+    /// appears once that adds up to something worth acting on, rather than
+    /// nagging someone with two sessions.
+    private static let storageWorthMentioning: Int64 = 250_000_000
+
+    static func sizeText(_ bytes: Int64) -> String {
+        ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+    }
+
+    @ViewBuilder
+    private var storageCard: some View {
+        let bytes = store.totalVideoBytes
+        if bytes >= Self.storageWorthMentioning {
+            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                Text("STORAGE")
+                    .font(.caption.weight(.semibold))
+                    .tracking(1.2)
+                    .foregroundStyle(.secondary)
+                Text("\(Self.sizeText(bytes)) of video across ^[\(store.sessionsWithVideo) session](inflect: true)")
+                    .font(.subheadline.weight(.semibold))
+                Text("Clearing the footage keeps every score, the coaching and your trend. Only playback and the annotated export need the original clip.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Button {
+                    showClearVideos = true
+                } label: {
+                    Label("Free up \(Self.sizeText(bytes))", systemImage: "internaldrive")
+                        .frame(maxWidth: .infinity)
+                }
+                .secondaryActionButton()
+                .padding(.top, 2)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(Theme.Spacing.l)
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        }
+    }
+
     // MARK: - Sessions
 
     private var sessionList: some View {
@@ -212,6 +270,14 @@ struct HomeView: View {
                 .buttonStyle(CardButtonStyle())
                 .matchedTransitionSource(id: session.id, in: zoomNamespace)
                 .contextMenu {
+                    if session.hasVideo {
+                        Button {
+                            withAnimation(.snappy) { store.discardVideo(session) }
+                        } label: {
+                            Label("Free up \(Self.sizeText(store.videoBytes(session)))",
+                                  systemImage: "internaldrive")
+                        }
+                    }
                     Button(role: .destructive) {
                         sessionToDelete = session
                     } label: {
