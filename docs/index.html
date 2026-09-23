@@ -52,7 +52,7 @@
 <main>
 
   <h1>Privacy Policy</h1>
-  <p class="updated">TennisAI: Swing Coach. Last updated July 29, 2026.</p>
+  <p class="updated">TennisAI: Swing Coach. Last updated September 22, 2026.</p>
 
   <h2>The short version</h2>
   <p class="lede">
@@ -65,7 +65,13 @@
   <p>
     When you record a session or import a video, the analysis runs on your device. The app
     uses Vision, Apple's on-device framework, to read your body position and work out where
-    each stroke happens. Nothing is uploaded to make that work.
+    each stroke happens. It also listens to the video's soundtrack, on the device, for the
+    sound of the ball hitting the strings, which pins down the moment of each stroke. Nothing
+    is uploaded to make any of that work.
+  </p>
+  <p>
+    If more than one person uses the app on a device, each player's name and racquet hand,
+    and which sessions are theirs, are kept in the same private storage as everything else.
   </p>
   <p>
     The app keeps your videos, the results it derives from them, and your session history in
@@ -93,7 +99,9 @@
         </tr>
         <tr>
           <th scope="row">Microphone</th>
-          <td>To capture sound along with the video, so playback matches what you filmed.</td>
+          <td>To capture sound along with the video, so playback matches what you filmed. The
+            app also analyzes that sound on the device to hear when the ball is hit. It is never
+            uploaded.</td>
         </tr>
         <tr>
           <th scope="row">Photo library<br>(add only)</th>

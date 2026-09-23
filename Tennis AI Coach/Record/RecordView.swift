@@ -9,6 +9,8 @@ import AVKit
 import UIKit
 
 struct RecordView: View {
+    /// Who's being filmed, shown on the camera so the session goes to them.
+    var player: PlayerProfile? = nil
     let onRecorded: (URL) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -110,6 +112,12 @@ struct RecordView: View {
                         .glassEffect(.regular.interactive(), in: .circle)
                 }
                 .accessibilityLabel("Close camera")
+
+                Spacer()
+
+                if let player {
+                    PlayerChip(player: player, onCamera: true)
+                }
 
                 Spacer()
 

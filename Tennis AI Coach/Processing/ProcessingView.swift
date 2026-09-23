@@ -92,7 +92,7 @@ struct ProcessingView: View {
     /// Progress-staged copy: the ring moves and the words move with it.
     private var stageTitle: String {
         switch model.progress {
-        case ..<0.15: return "Reading your video…"
+        case ..<0.25: return "Finding the player…"
         case ..<0.80: return "Tracking body pose…"
         case ..<0.95: return "Measuring your form…"
         default: return "Writing up coaching…"
@@ -133,14 +133,19 @@ struct ProcessingView: View {
         model.progress = 0
         model.failure = nil
         let model = model
+        // The player the clip was recorded or imported for; their racquet
+        // hand tells the analysis which arm to follow.
+        let player = store.activeProfile
+        var config = AnalysisConfig.default
+        config.hittingArm = player.hand
         do {
             let result = try await engine.analyze(
                 videoURL: videoURL,
-                config: .default,
+                config: config,
                 progress: { p in
                     Task { @MainActor in model.progress = p }
                 })
-            let session = store.addSession(sourceVideoURL: videoURL, result: result)
+            let session = store.addSession(sourceVideoURL: videoURL, result: result, for: player)
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             router.showResults(session.id)
         } catch is CancellationError {

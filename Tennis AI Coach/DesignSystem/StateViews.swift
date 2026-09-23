@@ -11,11 +11,14 @@ import UIKit
 
 /// Empty library: first-run Home.
 struct EmptyLibraryState: View {
+    /// Named when there's more than one player, so an empty Home reads as
+    /// "this player hasn't recorded yet" rather than "your sessions are gone".
+    var playerName: String? = nil
     var onRecord: () -> Void
 
     var body: some View {
         ContentUnavailableView {
-            Label("No sessions yet", systemImage: "figure.tennis")
+            Label(playerName.map { "No sessions for \($0) yet" } ?? "No sessions yet", systemImage: "figure.tennis")
         } description: {
             Text("Film side-on from the baseline with your full body in frame to get your first form score.")
         } actions: {

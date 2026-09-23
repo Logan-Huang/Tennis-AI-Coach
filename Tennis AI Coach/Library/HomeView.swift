@@ -18,6 +18,7 @@ struct HomeView: View {
     @State private var showImport = false
     @State private var showRecord = false
     @State private var showComparePicker = false
+    @State private var showPlayers = false
     @State private var sessionToDelete: Session?
     @State private var showClearVideos = false
 
@@ -29,7 +30,8 @@ struct HomeView: View {
         ScrollView {
             VStack(spacing: Theme.Spacing.l) {
                 if store.sessions.isEmpty {
-                    EmptyLibraryState(onRecord: { showRecord = true })
+                    EmptyLibraryState(playerName: store.profiles.count > 1 ? store.activeProfile.displayName : nil,
+                                      onRecord: { showRecord = true })
                         .padding(.top, Theme.Spacing.xl)
                 } else {
                     heroStrip
@@ -51,20 +53,41 @@ struct HomeView: View {
             .padding()
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle("Tennis AI Coach")
+        .navigationTitle(store.activeProfile.displayName)
         .navigationBarTitleDisplayMode(.large)
-        .task(id: store.sessions.count) {
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showPlayers = true
+                } label: {
+                    ProfileAvatar(profile: store.activeProfile, size: 32)
+                }
+                .accessibilityLabel("Players")
+                .accessibilityValue(store.activeProfile.displayName)
+                .accessibilityHint("Switch player or add a new one")
+            }
+        }
+        .task {
+            // Debug hook: `-autoOpenPlayers` opens the player switcher
+            // (Simulator verification, where taps can't be injected).
+            if ProcessInfo.processInfo.arguments.contains("-autoOpenPlayers") { showPlayers = true }
+        }
+        .task(id: TrendKey(player: store.activeProfileID, sessions: store.sessions.count)) {
             trend = store.progressTrend()
             componentTrends = store.componentTrends()
         }
+        .sheet(isPresented: $showPlayers) {
+            ProfileSwitcherSheet()
+                .environment(store)
+        }
         .sheet(isPresented: $showImport) {
-            ImportSheet { url in
+            ImportSheet(player: store.activeProfile) { url in
                 showImport = false
                 router.startProcessing(url)
             }
         }
         .fullScreenCover(isPresented: $showRecord) {
-            RecordView { url in
+            RecordView(player: store.activeProfile) { url in
                 showRecord = false
                 router.startProcessing(url)
             }
@@ -104,6 +127,12 @@ struct HomeView: View {
         } message: {
             Text("Your sessions, scores, coaching and trend all stay. Only the footage goes, and it can't be recovered.")
         }
+    }
+
+    /// Home's trend is recomputed when the player or their session count changes.
+    private struct TrendKey: Hashable {
+        var player: UUID
+        var sessions: Int
     }
 
     // MARK: - Hero strip (your numbers first)
@@ -270,6 +299,18 @@ struct HomeView: View {
                 .buttonStyle(CardButtonStyle())
                 .matchedTransitionSource(id: session.id, in: zoomNamespace)
                 .contextMenu {
+                    let others = store.profiles.filter { $0.id != session.profileID }
+                    if !others.isEmpty {
+                        Menu {
+                            ForEach(others) { profile in
+                                Button(profile.displayName) {
+                                    withAnimation(.snappy) { store.move(session, to: profile) }
+                                }
+                            }
+                        } label: {
+                            Label("Move to Player", systemImage: "person.crop.circle.badge.arrow.forward")
+                        }
+                    }
                     if session.hasVideo {
                         Button {
                             withAnimation(.snappy) { store.discardVideo(session) }

@@ -12,6 +12,10 @@ struct Tennis_AI_CoachApp: App {
     @State private var router = AppRouter()
     @State private var store = LibraryStore()
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
+    /// Set once the player has been named — by onboarding for a new install,
+    /// or by the one-time "Your Profile" sheet for someone updating from
+    /// before there were players.
+    @AppStorage("hasSeenProfilesIntro") private var hasSeenProfilesIntro = false
     private let engine = VisionAnalysisEngine()
 
     var body: some Scene {
@@ -24,7 +28,21 @@ struct Tennis_AI_CoachApp: App {
                 .fullScreenCover(isPresented: Binding(
                     get: { !hasSeenOnboarding },
                     set: { if !$0 { hasSeenOnboarding = true } })) {
-                    OnboardingView { hasSeenOnboarding = true }
+                    OnboardingView {
+                        hasSeenOnboarding = true
+                        hasSeenProfilesIntro = true
+                    }
+                    .environment(store)
+                    .tint(Theme.court)
+                }
+                .sheet(isPresented: Binding(
+                    get: { hasSeenOnboarding && !hasSeenProfilesIntro },
+                    set: { if !$0 { hasSeenProfilesIntro = true } })) {
+                    ProfileEditorView(mode: .firstRun(store.activeProfile)) {
+                        hasSeenProfilesIntro = true
+                    }
+                    .environment(store)
+                    .tint(Theme.court)
                 }
         }
     }

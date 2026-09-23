@@ -28,6 +28,9 @@ struct MovieImport: Transferable {
 }
 
 struct ImportSheet: View {
+    /// Who the clip will be analysed for — said on the sheet, so it doesn't
+    /// quietly land in the wrong player's sessions.
+    var player: PlayerProfile? = nil
     let onPicked: (URL) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -52,6 +55,10 @@ struct ImportSheet: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
+
+                if let player {
+                    PlayerChip(player: player)
+                }
 
                 VStack(spacing: 12) {
                     PhotosPicker(selection: $photoItem, matching: .videos, preferredItemEncoding: .current) {

@@ -47,16 +47,31 @@ struct ContentView: View {
                 }
         }
         .task {
-            // Debug hook: `-autoOpenSession <uuid|newest>` launch argument
-            // jumps straight to a session's report (UI verification in the
-            // Simulator, where taps can't be injected). No-op otherwise.
+            // Debug hooks (UI verification in the Simulator, where taps can't
+            // be injected). No-ops otherwise.
+            //   `-activeProfile <name>`           switch player at launch
+            //   `-autoOpenSession <uuid|newest>`  jump to a session's report
+            //                                     (a uuid switches to its player)
             let args = ProcessInfo.processInfo.arguments
-            guard let i = args.firstIndex(of: "-autoOpenSession"), i + 1 < args.count else { return }
-            let key = args[i + 1]
-            let target = key == "newest"
-                ? store.sessions.first
-                : store.sessions.first { $0.id.uuidString.caseInsensitiveCompare(key) == .orderedSame }
-            if let target { router.showResults(target.id) }
+            func value(_ flag: String) -> String? {
+                guard let i = args.firstIndex(of: flag), i + 1 < args.count else { return nil }
+                return args[i + 1]
+            }
+            if let name = value("-activeProfile"),
+               let profile = store.profiles.first(where: {
+                   $0.displayName.caseInsensitiveCompare(name) == .orderedSame
+               }) {
+                store.switchTo(profile)
+            }
+            guard let key = value("-autoOpenSession") else { return }
+            if key == "newest" {
+                if let target = store.sessions.first { router.showResults(target.id) }
+            } else if let id = UUID(uuidString: key), let target = store.session(id: id) {
+                if let owner = store.profiles.first(where: { $0.id == target.profileID }) {
+                    store.switchTo(owner)
+                }
+                router.showResults(target.id)
+            }
         }
         .task {
             // Debug hook: `-autoCompareLatest` opens the compare screen for
