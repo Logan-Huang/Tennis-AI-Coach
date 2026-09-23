@@ -24,6 +24,14 @@ enum Theme {
     static let watch = Color(.watch)
     static let focus = Color(.focus)
 
+    // MARK: Onboarding — always drawn on the dark court surface
+
+    /// The app icon's tennis ball. Highlight words and the ball itself.
+    static let ball = Color(red: 0.863, green: 0.925, blue: 0.306)
+    /// Skeleton body on dark green: brighter than `courtLight`, which is tuned
+    /// for drawing over video, so a figure on a plain dark ground reads at once.
+    static let onboardingBody = Color(red: 0.34, green: 0.84, blue: 0.59)
+
     // MARK: Comparison pair (session compare: before vs after)
 
     static let before = clay
