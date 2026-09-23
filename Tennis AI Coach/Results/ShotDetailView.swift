@@ -64,7 +64,7 @@ struct ShotDetailView: View {
                 }
 
                 // Honesty footer — the numbers are indicative, not measured truth.
-                Text("Scores are a 2D estimate from a side-on camera — indicative, not a measurement. Swing speed is relative to your fastest swing this session.")
+                Text(footnote)
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -72,7 +72,7 @@ struct ShotDetailView: View {
             .padding()
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle("Swing \(shot.strokeId)")
+        .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
@@ -96,12 +96,29 @@ struct ShotDetailView: View {
         .sensoryFeedback(.selection, trigger: index)
     }
 
+    private var title: String {
+        guard let kind = stroke?.kind else { return "Swing \(shot.strokeId)" }
+        return "\(kind.displayName) · Swing \(shot.strokeId)"
+    }
+
+    private var footnote: String {
+        var parts = ["Scores are a 2D estimate from video — indicative, not a measurement. Knee and elbow angles are only graded while that limb faces the camera side-on."]
+        switch stroke?.timing {
+        case .heard?: parts.append("Contact was timed from the sound of the ball.")
+        case .estimated?: parts.append("No ball sound was found, so contact was taken as your fastest wrist moment.")
+        case nil: break
+        }
+        let family = stroke?.kind.map { $0 == .serve ? "serve" : $0.displayName.lowercased() } ?? "swing"
+        parts.append("Swing speed is relative to your fastest \(family) this session.")
+        return parts.joined(separator: " ")
+    }
+
     private var header: some View {
         VStack(spacing: Theme.Spacing.m) {
             ScoreRing(score: shot.overall, size: .hero, showBandLabel: true)
             HStack(spacing: Theme.Spacing.s) {
                 if let stroke {
-                    Text("SWING \(shot.strokeId) · \(Fmt.time(stroke.peakTime))")
+                    Text("\(stroke.kind?.displayName ?? "Swing") \(shot.strokeId) · \(Fmt.time(stroke.peakTime))")
                         .microLabel()
                 }
                 if shot.confidence != .high {
@@ -117,12 +134,6 @@ struct ShotDetailView: View {
     }
 
     private func rawText(_ c: ShotScoreComponent) -> String {
-        guard c.rawValue.isFinite else { return "—" }
-        switch c.kind {
-        case .swingSpeed: return Fmt.relSpeed(c.rawValue)
-        case .kneeBend, .torsoStability, .elbowExtension: return Fmt.deg(c.rawValue)
-        case .stanceWidth: return String(format: "%.2f× hips", c.rawValue)
-        case .prepFollowThrough: return "\(Int((c.rawValue * 100).rounded()))% smooth"
-        }
+        Fmt.component(c.kind, c.rawValue)
     }
 }

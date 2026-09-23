@@ -92,7 +92,7 @@ enum AnnotatedVideoExporter {
             zip(result.strokes, shotScores).compactMap { stroke, shot in
                 guard shot.isGraded else { return nil }
                 return (stroke.peakTime,
-                        "SWING \(stroke.id) · \(Int(shot.overall.rounded()))",
+                        "\((stroke.kind?.displayName ?? "Swing").uppercased()) \(stroke.id) · \(Int(shot.overall.rounded()))",
                         bandColor(shot.band))
             }
 

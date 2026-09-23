@@ -19,6 +19,21 @@ nonisolated enum FormBands {
     static let leanMax: Double = 22
     static let elbowIdeal: ClosedRange<Double> = 75...155
     static let elbowSoft: ClosedRange<Double> = 55...175
+    /// A serve is struck with the arm close to straight.
+    static let serveElbowIdeal: ClosedRange<Double> = 145...180
+    static let serveElbowSoft: ClosedRange<Double> = 105...180
+    /// Serve reach: the hand's height above the shoulders at contact, in
+    /// torso lengths. A fully extended arm puts it about 1.1-1.3 above; the
+    /// labelled serves measured 0.82-1.13.
+    static let reachIdeal: Double = 0.95
+    static let reachFloor: Double = 0.4
+    /// Groundstroke finish: the hand's highest point in the half second after
+    /// contact, torso lengths above the shoulders. A finish over the shoulder
+    /// brings the racquet wrist to about shoulder height (-0.15-0.45 on the
+    /// labelled strokes); a swing that stops at the chest or the waist
+    /// doesn't get there.
+    static let finishIdeal: Double = -0.15
+    static let finishFloor: Double = -0.75
     /// Below this stroke count, session-level conclusions are provisional.
     static let minStrokesForConfidence = 4
 }

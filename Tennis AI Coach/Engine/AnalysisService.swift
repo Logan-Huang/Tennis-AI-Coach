@@ -36,7 +36,9 @@ nonisolated final class VisionAnalysisEngine: AnalysisEngine {
                              progress: @Sendable @escaping (Double) -> Void) async throws -> AnalysisResult {
         let source = try await VideoSource.load(url: videoURL)
         try Task.checkCancellation()
-        return try AnalysisPipeline.run(source: source, config: config, progress: progress)
+        let onsets = await AudioOnsets.detect(asset: source.asset, videoStartS: source.startS)
+        try Task.checkCancellation()
+        return try AnalysisPipeline.run(source: source, config: config, onsets: onsets, progress: progress)
     }
 
     nonisolated func exportAnnotatedVideo(result: AnalysisResult,
@@ -88,11 +90,12 @@ nonisolated final class MockEngine: AnalysisEngine {
         for i in 0..<count {
             let t = Double(i * stride) / fps
             let phase = Double(i) * 0.18
-            // Right wrist speed: baseline + periodic swing peaks; a couple of NaN gaps.
+            // Right wrist speed (torso lengths/s): baseline + periodic swing
+            // peaks; a couple of NaN gaps.
             let isGap = (i % 47 == 0)
-            let swing = max(0.0, sin(phase)) * 2600.0
-            let rightSpeed = isGap ? Double.nan : 250.0 + swing + 120.0 * sin(phase * 3.1)
-            let leftSpeed = isGap ? Double.nan : 180.0 + 90.0 * abs(sin(phase * 0.7))
+            let swing = max(0.0, sin(phase)) * 26.0
+            let rightSpeed = isGap ? Double.nan : 2.5 + swing + 1.2 * sin(phase * 3.1)
+            let leftSpeed = isGap ? Double.nan : 1.8 + 0.9 * abs(sin(phase * 0.7))
 
             let knee = 138.0 - 22.0 * max(0.0, sin(phase))   // dips during swings
             let elbow = 96.0 + 30.0 * sin(phase + 0.5)
@@ -109,7 +112,17 @@ nonisolated final class MockEngine: AnalysisEngine {
         }
 
         let hittingArm = StrokeDetector.pickHittingArm(frames: frames)
-        let strokes = StrokeDetector.detect(frames: frames, hittingArm: hittingArm, fps: fps, sampleStride: stride)
+        var strokes = StrokeDetector.detect(frames: frames, hittingArm: hittingArm, fps: fps, sampleStride: stride)
+        // Something to preview every stroke kind with.
+        let kinds: [StrokeKind] = [.serve, .forehand, .backhand, .forehand, .backhand]
+        for i in strokes.indices {
+            strokes[i].kind = kinds[i % kinds.count]
+            strokes[i].timing = i % 3 == 2 ? .estimated : .heard
+            strokes[i].reach = strokes[i].kind == .serve ? 1.05 : 0.1
+            strokes[i].finish = 0.1 - 0.15 * Double(i % 4)
+            strokes[i].loadKnee = 128
+            strokes[i].contactElbow = 162
+        }
         let summary = CoachingEngine.summarize(frames: frames, strokes: strokes)
         let coaching = CoachingEngine.generate(summary: summary, hittingArm: hittingArm)
         let meta = VideoMeta(fps: fps, width: 1080, height: 1920,
@@ -118,7 +131,8 @@ nonisolated final class MockEngine: AnalysisEngine {
         return AnalysisResult(
             meta: meta, hittingArm: hittingArm,
             frames: frames, poses: poses, strokes: strokes,
-            summary: summary, coaching: coaching)
+            summary: summary, coaching: coaching,
+            engineVersion: AnalysisResult.currentEngineVersion)
     }
 
     private nonisolated static func samplePose(timeS: Double, phase: Double, gap: Bool) -> PoseFrame {

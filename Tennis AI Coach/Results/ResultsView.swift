@@ -32,6 +32,7 @@ struct ResultsView: View {
     private let headline: String
     private let focus: Narrative.Focus?
     private let findings: [FindingCount]
+    private let strokeMix: [Narrative.KindSummary]
 
     init(session: Session) {
         self.session = session
@@ -51,6 +52,7 @@ struct ResultsView: View {
         self.headline = Narrative.headline(session: rollup, shots: shots)
         self.focus = Narrative.focusNext(shots: shots)
         self.findings = Narrative.findingCounts(shots: shots)
+        self.strokeMix = Narrative.strokeMix(shots)
     }
 
     private var result: AnalysisResult { session.result }
@@ -75,6 +77,11 @@ struct ResultsView: View {
                 VStack(spacing: Theme.Spacing.l) {
                     if result.isUsable {
                         SessionHeroCard(session: sessionScore, headline: headline)
+
+                        // Only once there's more than one kind to compare.
+                        if strokeMix.count >= 2 {
+                            StrokeMixCard(mix: strokeMix)
+                        }
 
                         videoCard
                             .id("video")

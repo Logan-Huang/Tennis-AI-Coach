@@ -80,6 +80,8 @@ nonisolated struct ShotScoreComponent: Sendable, Identifiable {
         case elbowExtension
         case stanceWidth
         case prepFollowThrough
+        case reach               // serves: hand height at contact
+        case finish              // groundstrokes: hand height after contact
 
         var displayName: String {
             switch self {
@@ -89,6 +91,8 @@ nonisolated struct ShotScoreComponent: Sendable, Identifiable {
             case .elbowExtension: return "Elbow extension"
             case .stanceWidth: return "Stance width"
             case .prepFollowThrough: return "Prep & follow-through"
+            case .reach: return "Reach at contact"
+            case .finish: return "Finish height"
             }
         }
     }
@@ -109,6 +113,10 @@ nonisolated struct ShotScore: Sendable, Identifiable {
     var trackingCoverage: Double     // 0–1 joint coverage over the window
     var confidence: ConfidenceLevel
     var components: [ShotScoreComponent]
+    /// The stroke's kind and contact timing, carried along so coaching can
+    /// talk about "your backhands" without reaching back into the strokes.
+    var strokeKind: StrokeKind? = nil
+    var timing: ContactTiming? = nil
 
     var id: Int { strokeId }
     var band: ScoreBand { ScoreBand(score: overall) }

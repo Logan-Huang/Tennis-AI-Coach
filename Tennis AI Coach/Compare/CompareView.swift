@@ -147,13 +147,7 @@ struct CompareView: View {
     }
 
     private func rawText(_ kind: ShotScoreComponent.Kind, _ raw: Double) -> String {
-        guard raw.isFinite else { return "—" }
-        switch kind {
-        case .kneeBend, .torsoStability, .elbowExtension: return Fmt.deg(raw)
-        case .stanceWidth: return String(format: "%.2f×", raw)
-        case .prepFollowThrough: return "\(Int((raw * 100).rounded()))%"
-        case .swingSpeed: return "—"
-        }
+        Fmt.component(kind, raw, compact: true)
     }
 
     // MARK: - Finding transitions

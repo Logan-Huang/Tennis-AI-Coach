@@ -47,4 +47,26 @@ nonisolated enum CoordinateSpace {
         Pt(Double(loc.x) * Double(sz.width),
            Double(1.0 - loc.y) * Double(sz.height))
     }
+
+    /// A Vision normalized rect (origin bottom-left) as a pixel rect (origin
+    /// top-left) over the ORIENTED frame.
+    static func denormalize(rect r: CGRect, orientedSize sz: CGSize) -> CGRect {
+        CGRect(x: r.minX * sz.width,
+               y: (1 - r.maxY) * sz.height,
+               width: r.width * sz.width,
+               height: r.height * sz.height)
+    }
+
+    /// The inverse: a pixel rect (origin top-left) as the normalized,
+    /// bottom-left-origin rect Vision's `regionOfInterest` takes, clamped to
+    /// the frame.
+    static func normalize(rect r: CGRect, orientedSize sz: CGSize) -> CGRect {
+        guard sz.width > 0, sz.height > 0 else { return CGRect(x: 0, y: 0, width: 1, height: 1) }
+        let n = CGRect(x: r.minX / sz.width,
+                       y: 1 - r.maxY / sz.height,
+                       width: r.width / sz.width,
+                       height: r.height / sz.height)
+        let clamped = n.intersection(CGRect(x: 0, y: 0, width: 1, height: 1))
+        return clamped.isNull || clamped.isEmpty ? CGRect(x: 0, y: 0, width: 1, height: 1) : clamped
+    }
 }

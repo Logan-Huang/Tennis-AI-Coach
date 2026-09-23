@@ -30,7 +30,9 @@ struct ChartsView: View {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
                 chartCard(
                     title: "Wrist speed (\(result.hittingArm.displayName) arm)",
-                    subtitle: "Marker color is that swing's score band. Values are relative — pixel units, not real speed.",
+                    subtitle: result.hasBodyRelativeSpeeds
+                        ? "Marker color is that swing's score band. Measured against your own body — torso lengths per second, not real speed."
+                        : "Marker color is that swing's score band. Values are relative — pixel units, not real speed.",
                     points: speedPoints,
                     color: Theme.court,
                     markers: result.strokes.map { ($0.peakTime, $0.peakSpeed, bandById[$0.id] ?? Theme.clay) },

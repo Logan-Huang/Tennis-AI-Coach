@@ -21,14 +21,17 @@ nonisolated struct VideoSource: @unchecked Sendable {
     let orientedSize: CGSize
     let durationS: Double
     let estimatedFrameCount: Int
+    /// Presentation time of the video track's first frame. Frame times in the
+    /// analysis count from here; the soundtrack is shifted to match.
+    let startS: Double
 
     static func load(url: URL) async throws -> VideoSource {
         let asset = AVURLAsset(url: url)
         let videoTracks = try await asset.loadTracks(withMediaType: .video)
         guard let track = videoTracks.first else { throw AnalysisError.unreadableVideo }
 
-        let (nominalFPS, naturalSize, transform) = try await track.load(
-            .nominalFrameRate, .naturalSize, .preferredTransform)
+        let (nominalFPS, naturalSize, transform, timeRange) = try await track.load(
+            .nominalFrameRate, .naturalSize, .preferredTransform, .timeRange)
         let duration = try await asset.load(.duration)
 
         var fps = Double(nominalFPS)
@@ -48,7 +51,8 @@ nonisolated struct VideoSource: @unchecked Sendable {
             asset: asset, track: track, fps: fps,
             naturalSize: naturalSize, preferredTransform: transform,
             orientation: orientation, orientedSize: orientedSize,
-            durationS: durationS, estimatedFrameCount: estFrames)
+            durationS: durationS, estimatedFrameCount: estFrames,
+            startS: timeRange.start.seconds.isFinite ? timeRange.start.seconds : 0)
     }
 
     /// Build a fresh reader + output for one decode pass.

@@ -21,12 +21,16 @@ nonisolated struct MetricsComputer {
     /// Produce one FrameMetrics row from a frame's joints.
     /// - processedIndex: 0-based index among PROCESSED (stride-sampled) frames.
     /// - dt: seconds between processed frames = (1/fps) * stride.
+    /// - limbs/torso: when given, a knee or elbow angle is only measured while
+    ///   both of its segments lie flat to the camera (LimbReference).
     mutating func makeRow(joints: [BodyJoint: Pt],
                           processedIndex: Int,
                           rawFrameIndex: Int,
                           timeS: Double,
                           dt: Double,
-                          config: AnalysisConfig) -> FrameMetrics {
+                          config: AnalysisConfig,
+                          limbs: LimbReference? = nil,
+                          torso: Double = .nan) -> FrameMetrics {
 
         let lShoulder = joints[.leftShoulder],  rShoulder = joints[.rightShoulder]
         let lElbow = joints[.leftElbow],        rElbow = joints[.rightElbow]
@@ -35,11 +39,24 @@ nonisolated struct MetricsComputer {
         let lKnee = joints[.leftKnee],          rKnee = joints[.rightKnee]
         let lAnkle = joints[.leftAnkle],        rAnkle = joints[.rightAnkle]
 
-        // Joint angles.
-        let kneeL = Geometry.angleDeg(lHip, lKnee, lAnkle)
-        let kneeR = Geometry.angleDeg(rHip, rKnee, rAnkle)
-        let elbowL = Geometry.angleDeg(lShoulder, lElbow, lWrist)
-        let elbowR = Geometry.angleDeg(rShoulder, rElbow, rWrist)
+        // Joint angles, where the limb is side-on enough for a 2D angle to
+        // mean the real one.
+        func angle(_ a: Pt?, _ b: Pt?, _ c: Pt?, _ inPlane: Bool) -> Double {
+            inPlane ? Geometry.angleDeg(a, b, c) : .nan
+        }
+        // A leg in the air isn't loading: its knee folds during a leg kick on
+        // a jumping forehand or the landing after a serve, and "most-bent
+        // knee" then reports a squat the player never made.
+        let lLifted = Self.isLifted(lAnkle, above: rAnkle, torso: torso)
+        let rLifted = Self.isLifted(rAnkle, above: lAnkle, torso: torso)
+        let legL = !lLifted && (limbs?.legInPlane(lHip, lKnee, lAnkle, torso: torso) ?? true)
+        let legR = !rLifted && (limbs?.legInPlane(rHip, rKnee, rAnkle, torso: torso) ?? true)
+        let armL = limbs?.armInPlane(lShoulder, lElbow, lWrist, torso: torso) ?? true
+        let armR = limbs?.armInPlane(rShoulder, rElbow, rWrist, torso: torso) ?? true
+        let kneeL = angle(lHip, lKnee, lAnkle, legL)
+        let kneeR = angle(rHip, rKnee, rAnkle, legR)
+        let elbowL = angle(lShoulder, lElbow, lWrist, armL)
+        let elbowR = angle(rShoulder, rElbow, rWrist, armR)
 
         // Torso lean (signed) from shoulder-center -> hip-center vector.
         var torsoLean = Double.nan
@@ -49,9 +66,12 @@ nonisolated struct MetricsComputer {
         }
         let torsoLeanAbs = torsoLean.isFinite ? abs(torsoLean) : .nan
 
-        // Stance width ratio, with anatomical outlier guard.
+        // Stance width ratio, with anatomical outlier guard — and only while
+        // the hips face the camera: side-on they overlap, the denominator
+        // collapses and any stance reads as enormously wide.
         var stance = Double.nan
-        if let la = lAnkle, let ra = rAnkle, let lh = lHip, let rh = rHip {
+        if let la = lAnkle, let ra = rAnkle, let lh = lHip, let rh = rHip,
+           limbs?.hipsInPlane(lh, rh, torso: torso) ?? true {
             let ankleDist = simd_length(ra - la)
             let hipDist = simd_length(rh - lh)
             let ratio = ankleDist / (hipDist + 1e-6)
@@ -76,6 +96,86 @@ nonisolated struct MetricsComputer {
             kneeL: kneeL, kneeR: kneeR, elbowL: elbowL, elbowR: elbowR,
             torsoLean: torsoLean, torsoLeanAbs: torsoLeanAbs,
             stanceRatio: stance, wristSpeedL: leftSpeed, wristSpeedR: rightSpeed)
+    }
+
+    /// An ankle this many torso lengths higher in the frame than the other
+    /// one is off the ground. A level camera keeps "higher" meaningful from
+    /// any side; on flat ground two planted feet are never this far apart
+    /// vertically, even with one foot much nearer the lens.
+    static let liftedLegTorsos = 0.25
+
+    static func isLifted(_ ankle: Pt?, above other: Pt?, torso: Double) -> Bool {
+        guard let ankle, let other, torso.isFinite, torso > 0 else { return false }
+        return (other.y - ankle.y) / torso > liftedLegTorsos
+    }
+}
+
+// MARK: - Limb foreshortening
+
+/// Each limb segment's full length for this player, in torso lengths, so that
+/// a frame where the segment looks shorter can be recognised as the limb
+/// pointing toward or away from the camera.
+///
+/// A 2D joint angle is only the real angle when the limb bends across the
+/// picture. Film a player from in front or behind — which is how most rally
+/// footage is shot — and the knee bends toward the lens: thigh and shin both
+/// shrink on screen and the angle between them reads anything from straight to
+/// impossibly deep. On the sample rally clips the "more-bent knee" came out as
+/// low as 25° for a player standing upright on one leg. So a knee or elbow is
+/// only measured in frames where both of its segments show at least
+/// `inPlane` of their full length, and otherwise left unmeasured, which the
+/// scorer already treats as "not graded" rather than as a bad score.
+nonisolated struct LimbReference: Sendable {
+    var thigh: Double
+    var shin: Double
+    var upperArm: Double
+    var forearm: Double
+    var hipWidth: Double = .nan
+
+    /// A segment showing less than this fraction of its length is foreshortened.
+    static let inPlane = 0.8
+    /// The percentile of a segment's on-screen length taken as its true
+    /// length: near the top, because a segment is never longer than itself,
+    /// but not the top, where a mis-placed joint lives.
+    private static let fullLengthPercentile = 90.0
+
+    /// Measured over the whole clip, left and right pooled (they're the same
+    /// person's limbs).
+    static func measure(_ frames: [[BodyJoint: Pt]], torso: [Double]) -> LimbReference {
+        func pooled(_ a: (BodyJoint, BodyJoint), _ b: (BodyJoint, BodyJoint)) -> Double {
+            var lengths: [Double] = []
+            for (i, j) in frames.enumerated() where i < torso.count && torso[i].isFinite && torso[i] > 0 {
+                for (p, q) in [a, b] {
+                    if let p = j[p], let q = j[q] { lengths.append(simd_length(p - q) / torso[i]) }
+                }
+            }
+            return NanStats.nanPercentile(lengths, fullLengthPercentile)
+        }
+        return LimbReference(
+            thigh: pooled((.leftHip, .leftKnee), (.rightHip, .rightKnee)),
+            shin: pooled((.leftKnee, .leftAnkle), (.rightKnee, .rightAnkle)),
+            upperArm: pooled((.leftShoulder, .leftElbow), (.rightShoulder, .rightElbow)),
+            forearm: pooled((.leftElbow, .leftWrist), (.rightElbow, .rightWrist)),
+            hipWidth: pooled((.leftHip, .rightHip), (.leftHip, .rightHip)))
+    }
+
+    func hipsInPlane(_ l: Pt?, _ r: Pt?, torso: Double) -> Bool {
+        Self.inPlane(l, r, hipWidth, torso)
+    }
+
+    func legInPlane(_ hip: Pt?, _ knee: Pt?, _ ankle: Pt?, torso: Double) -> Bool {
+        Self.inPlane(hip, knee, thigh, torso) && Self.inPlane(knee, ankle, shin, torso)
+    }
+
+    func armInPlane(_ shoulder: Pt?, _ elbow: Pt?, _ wrist: Pt?, torso: Double) -> Bool {
+        Self.inPlane(shoulder, elbow, upperArm, torso) && Self.inPlane(elbow, wrist, forearm, torso)
+    }
+
+    /// Unknown reference or unknown scale: nothing to judge by, so measure.
+    private static func inPlane(_ a: Pt?, _ b: Pt?, _ full: Double, _ torso: Double) -> Bool {
+        guard let a, let b else { return true }   // the angle will be NaN anyway
+        guard full.isFinite, full > 0, torso.isFinite, torso > 0 else { return true }
+        return simd_length(a - b) / torso >= inPlane * full
     }
 }
 

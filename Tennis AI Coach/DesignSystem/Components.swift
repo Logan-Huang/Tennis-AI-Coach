@@ -126,6 +126,21 @@ enum Fmt {
     static func relSpeed(_ ratio: Double) -> String {
         ratio.isFinite ? "\(Int((ratio * 100).rounded()))% of your fastest" : "—"
     }
+    /// A score component's underlying measurement, in the unit it's judged
+    /// in. `compact` for tight columns (compare rows).
+    static func component(_ kind: ShotScoreComponent.Kind, _ raw: Double, compact: Bool = false) -> String {
+        guard raw.isFinite else { return "—" }
+        switch kind {
+        case .swingSpeed: return compact ? "—" : relSpeed(raw)
+        case .kneeBend, .torsoStability, .elbowExtension: return deg(raw)
+        case .stanceWidth: return String(format: compact ? "%.2f×" : "%.2f× hips", raw)
+        case .prepFollowThrough:
+            let pct = Int((raw * 100).rounded())
+            return compact ? "\(pct)%" : "\(pct)% smooth"
+        case .reach: return String(format: compact ? "%.1f×" : "hand %.1f× torso up", raw)
+        case .finish: return Narrative.handHeight(raw)
+        }
+    }
     static func seconds(_ x: Double) -> String { x.isFinite ? String(format: "%.1fs", x) : "—" }
     static func time(_ x: Double) -> String {
         guard x.isFinite else { return "—" }

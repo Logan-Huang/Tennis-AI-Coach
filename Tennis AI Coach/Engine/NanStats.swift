@@ -17,6 +17,21 @@ nonisolated enum NanStats {
         return finite.min() ?? .nan
     }
 
+    /// np.nanmax over a 1-D array. All-NaN / empty -> NaN.
+    static func nanMax(_ xs: [Double]) -> Double {
+        xs.filter { $0.isFinite }.max() ?? .nan
+    }
+
+    /// NaN-aware max of exactly two scalars.
+    static func pairNanMax(_ a: Double, _ b: Double) -> Double {
+        switch (a.isFinite, b.isFinite) {
+        case (true, true):  return Swift.max(a, b)
+        case (true, false): return a
+        case (false, true): return b
+        case (false, false): return .nan
+        }
+    }
+
     /// NaN-aware min of exactly two scalars (used per-frame for knee_min).
     static func pairNanMin(_ a: Double, _ b: Double) -> Double {
         switch (a.isFinite, b.isFinite) {
