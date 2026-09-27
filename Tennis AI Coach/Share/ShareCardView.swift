@@ -110,7 +110,7 @@ struct SessionShareCard: View {
                 Circle()
                     .fill(Color(red: 0.855, green: 0.925, blue: 0.286))
                     .frame(width: 28, height: 28)
-                Text("Tennis AI Coach")
+                Text("Tennis Strokedex")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
             }

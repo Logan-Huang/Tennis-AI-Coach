@@ -139,7 +139,7 @@ nonisolated enum CoachingEngine {
                                       good: [String],
                                       focus: [String]) -> String {
         var lines: [String] = []
-        lines.append("# Tennis AI Coaching Report")
+        lines.append("# Tennis Strokedex Coaching Report")
         lines.append("")
         lines.append("**Duration:** \(fmt(summary.durationS))s  •  **Frames analyzed:** \(summary.framesProcessed)  •  **Strokes detected:** \(summary.strokesDetected)")
         lines.append("")
