@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		AF70000A2FD2421800D09897 /* AppsFlyerLib in Frameworks */ = {isa = PBXBuildFile; productRef = AF70000B2FD2421800D09897 /* AppsFlyerLib */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		02F94BFD2FD2421700D09897 /* TennisAI: Swing Coach.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "TennisAI: Swing Coach.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AF70000A2FD2421800D09897 /* AppsFlyerLib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +70,7 @@
 			);
 			name = "Tennis AI Coach";
 			packageProductDependencies = (
+				AF70000B2FD2421800D09897 /* AppsFlyerLib */,
 			);
 			productName = "Tennis AI Coach";
 			productReference = 02F94BFD2FD2421700D09897 /* TennisAI: Swing Coach.app */;
@@ -94,6 +100,9 @@
 			);
 			mainGroup = 02F94BF42FD2421700D09897;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				AF70000C2FD2421800D09897 /* XCRemoteSwiftPackageReference "AppsFlyerFramework" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 02F94BFE2FD2421700D09897 /* Products */;
 			projectDirPath = "";
@@ -254,11 +263,13 @@
 				DEVELOPMENT_TEAM = 9UJHQ5349H;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Tennis AI Coach-Info.plist";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_CFBundleDisplayName = "Tennis Strokedex";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Tennis Strokedex uses the camera to record your strokes for analysis.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Tennis Strokedex records sound with your video so playback matches your session, and listens for the ball on the strings to time each stroke. It is analyzed on your iPhone and never uploaded.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Tennis Strokedex can save your annotated video to your photo library.";
+				INFOPLIST_KEY_NSUserTrackingUsageDescription = "Allowing this lets Tennis Strokedex measure which ads led you to the app. Your videos, swings and scores never leave your iPhone.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -291,11 +302,13 @@
 				DEVELOPMENT_TEAM = 9UJHQ5349H;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Tennis AI Coach-Info.plist";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_CFBundleDisplayName = "Tennis Strokedex";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Tennis Strokedex uses the camera to record your strokes for analysis.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Tennis Strokedex records sound with your video so playback matches your session, and listens for the ball on the strings to time each stroke. It is analyzed on your iPhone and never uploaded.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Tennis Strokedex can save your annotated video to your photo library.";
+				INFOPLIST_KEY_NSUserTrackingUsageDescription = "Allowing this lets Tennis Strokedex measure which ads led you to the app. Your videos, swings and scores never leave your iPhone.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -340,6 +353,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		AF70000C2FD2421800D09897 /* XCRemoteSwiftPackageReference "AppsFlyerFramework" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/AppsFlyerSDK/AppsFlyerFramework";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 7.0.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AF70000B2FD2421800D09897 /* AppsFlyerLib */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AF70000C2FD2421800D09897 /* XCRemoteSwiftPackageReference "AppsFlyerFramework" */;
+			productName = AppsFlyerLib;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 02F94BF52FD2421700D09897 /* Project object */;
 }

@@ -34,3 +34,8 @@ Packages/
 # IMG_7145_analysis.json is deliberately NOT ignored: Scripts/scorer-harness
 # reads it as its input fixture, so a fresh clone needs it to run the harness.
 *_stats.txt
+
+# AppsFlyer dev key. Kept out of this public repo: local builds read the file
+# on this Mac, and Xcode Cloud writes it from the APPSFLYER_DEV_KEY secret
+# (ci_scripts/ci_post_clone.sh). Without it the app never starts the SDK.
+Tennis AI Coach/AppsFlyerKeys.plist

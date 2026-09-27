@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  The few Info.plist keys build settings can't set; Xcode merges these into the
+  Info.plist it generates. Both send AppsFlyer a copy of Apple's
+  privacy-preserving install postbacks (SKAdNetwork, and AdAttributionKit from
+  iOS 17.4), which attribute installs from people who don't allow tracking.
+-->
+<plist version="1.0">
+<dict>
+	<key>NSAdvertisingAttributionReportEndpoint</key>
+	<string>https://appsflyer-skadnetwork.com/</string>
+	<key>AttributionCopyEndpoint</key>
+	<string>https://appsflyer-skadnetwork.com/</string>
+</dict>
+</plist>

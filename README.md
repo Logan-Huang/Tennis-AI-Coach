@@ -6,8 +6,8 @@ Vision**, detects each stroke from their wrists and the sound of the ball,
 tells serves, forehands and backhands apart, and gives stroke‑specific
 coaching — plus an annotated playback with the skeleton overlaid. Several
 players can share one device, each with their own sessions and trend.
-Everything runs locally; no network, no accounts, no third‑party ML
-dependencies.
+Analysis runs entirely on the device; no accounts and no third‑party ML
+dependencies. The only network traffic is AppsFlyer install attribution.
 
 > Ported from a Colab notebook prototype (MediaPipe + rule‑based coaching) to a
 > native SwiftUI app backed by Apple Vision. It detects no ball, court or
@@ -202,8 +202,14 @@ is handy for validating the pure engine off‑device.
 
 ## Data & privacy
 
-- **100% on‑device.** No network calls, accounts, or analytics. Your video and
-  results never leave the phone.
+- **Analysis is 100% on‑device.** No accounts, and your video and results never
+  leave the phone.
+- **Install attribution (AppsFlyer).** `App/Attribution.swift` starts the SDK
+  after onboarding, once Apple's tracking prompt has been answered; it sends
+  only what AppsFlyer collects itself (device identifiers, installs and app
+  opens). The dev key lives in the git‑ignored `AppsFlyerKeys.plist`, which
+  Xcode Cloud writes from the `APPSFLYER_DEV_KEY` secret
+  (`ci_scripts/ci_post_clone.sh`); builds without it skip the SDK.
 - Analyzed sessions are saved under
   `Application Support/TennisAICoach/` — results as NaN‑safe JSON in `sessions/`,
   and a copy of each clip in `videos/`. Deleting a session removes both.

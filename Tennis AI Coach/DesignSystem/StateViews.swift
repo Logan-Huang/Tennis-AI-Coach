@@ -49,7 +49,7 @@ struct TrackingFailedState: View {
 /// Camera or photo permission denied.
 struct PermissionDeniedState: View {
     var title: String = "Camera access needed"
-    var message: String = "Tennis Strokedex films your session locally — nothing leaves your phone. Allow camera access in Settings to record."
+    var message: String = "Tennis Strokedex films your session locally — the video never leaves your phone. Allow camera access in Settings to record."
 
     var body: some View {
         ContentUnavailableView {

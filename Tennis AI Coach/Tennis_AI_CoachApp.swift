@@ -18,6 +18,10 @@ struct Tennis_AI_CoachApp: App {
     @AppStorage("hasSeenProfilesIntro") private var hasSeenProfilesIntro = false
     private let engine = VisionAnalysisEngine()
 
+    init() {
+        Attribution.configure()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()
@@ -31,6 +35,7 @@ struct Tennis_AI_CoachApp: App {
                     OnboardingView {
                         hasSeenOnboarding = true
                         hasSeenProfilesIntro = true
+                        Attribution.onboardingDidFinish()
                     }
                     .environment(store)
                     .tint(Theme.court)
