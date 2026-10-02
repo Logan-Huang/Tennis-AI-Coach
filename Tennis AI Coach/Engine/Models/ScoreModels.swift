@@ -6,9 +6,11 @@
 //  ShotScorer — NEVER persisted, so the on-disk AnalysisResult JSON schema is
 //  untouched and legacy sessions keep decoding.
 //
-//  Honesty contract: scores are relative FORM indices for one session, not
-//  physical measurements. The speed component is normalized to the session's
-//  own fastest swing (unitless); nothing here may be rendered as mph or px/s.
+//  Honesty contract: scores grade form against fixed standards (FormBands),
+//  the same for every player and session. Swing speed is the hand's speed
+//  relative to the player's own hips in torso lengths per second, which is
+//  the same at any distance or zoom; it is still a 2D estimate, so nothing
+//  here may be rendered as mph or px/s.
 //
 
 import Foundation
@@ -74,25 +76,40 @@ nonisolated enum ConfidenceLevel: String, Sendable {
 
 nonisolated struct ShotScoreComponent: Sendable, Identifiable {
     enum Kind: String, CaseIterable, Sendable {
-        case swingSpeed          // relative to session best — unitless
-        case kneeBend
+        case swingSpeed          // hand speed, torso lengths/s relative to the hips
+        case shoulderTurn        // groundstrokes: degrees the shoulders turned
+        case kneeBend            // knee angle at the load, degrees
+        case kineticChain        // groundstrokes: trunk's share of the hand's speed
+        case shoulderTilt        // serves: trophy-position shoulder tilt, degrees
         case torsoStability
         case elbowExtension
         case stanceWidth
-        case prepFollowThrough
         case reach               // serves: hand height at contact
         case finish              // groundstrokes: hand height after contact
 
         var displayName: String {
             switch self {
             case .swingSpeed: return "Swing speed"
+            case .shoulderTurn: return "Shoulder turn"
             case .kneeBend: return "Knee bend"
+            case .kineticChain: return "Body-led swing"
+            case .shoulderTilt: return "Shoulder tilt"
             case .torsoStability: return "Torso stability"
             case .elbowExtension: return "Elbow extension"
             case .stanceWidth: return "Stance width"
-            case .prepFollowThrough: return "Prep & follow-through"
             case .reach: return "Reach at contact"
             case .finish: return "Finish height"
+            }
+        }
+
+        /// The parts that make a swing powerful rather than merely tidy. A
+        /// shot's score can't run more than `ShotScorer.powerMargin` above
+        /// these: a still, upright, arm-only swing breaks none of the other
+        /// rules, and it shouldn't pass for a good stroke.
+        var isPower: Bool {
+            switch self {
+            case .swingSpeed, .shoulderTurn, .kneeBend, .shoulderTilt: return true
+            default: return false
             }
         }
     }
@@ -123,7 +140,7 @@ nonisolated struct ShotScore: Sendable, Identifiable {
     var isGraded: Bool { overall.isFinite }
 
     /// Weakest measurable form component (excludes swing speed — "work on
-    /// your speed" is not actionable form advice).
+    /// your speed" is an outcome, not a form cue).
     var weakestFormComponent: ShotScoreComponent? {
         components
             .filter { $0.kind != .swingSpeed && $0.score.isFinite }

@@ -25,8 +25,8 @@ struct SessionHeroCard: View {
     private var gradientZone: some View {
         HStack(alignment: .center, spacing: Theme.Spacing.m) {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                // "Session score" (includes swing speed) — deliberately
-                // distinct from Home's speed-excluded "Form score" trend.
+                // "Session score": the median shot score, the same number
+                // Home's trend plots for this session.
                 Text("Session score")
                     .font(.caption2.weight(.semibold))
                     .textCase(.uppercase)

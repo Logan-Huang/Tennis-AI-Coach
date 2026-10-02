@@ -12,7 +12,8 @@ import SwiftUI
 struct CoachingSection: View {
     let focus: Narrative.Focus?
     let findings: [FindingCount]
-    let report: CoachingReport
+    /// What's at the standard, from Narrative.strengths.
+    let strengths: [String]
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
@@ -24,11 +25,11 @@ struct CoachingSection: View {
                 findingsCard
             }
 
-            if !report.good.isEmpty {
+            if !strengths.isEmpty {
                 strengthsCard
             }
 
-            if focus == nil && findings.isEmpty && report.good.isEmpty {
+            if focus == nil && findings.isEmpty && strengths.isEmpty {
                 ContentUnavailableView {
                     Label("No coaching available", systemImage: "text.bubble")
                 } description: {
@@ -89,7 +90,7 @@ struct CoachingSection: View {
     private var strengthsCard: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m - 4) {
             SectionHeader(title: "What looks good")
-            ForEach(Array(report.good.enumerated()), id: \.offset) { _, text in
+            ForEach(Array(strengths.enumerated()), id: \.offset) { _, text in
                 HStack(alignment: .top, spacing: Theme.Spacing.s) {
                     Image(systemName: "checkmark")
                         .font(.caption.weight(.bold))

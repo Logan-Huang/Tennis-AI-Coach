@@ -43,7 +43,7 @@ struct CompareView: View {
                     transitionSection(report)
                 }
 
-                Text("Form only — swing speed isn't comparable across differently filmed sessions. Camera angle changes can shift angle estimates.")
+                Text("Both sessions are graded against the same standard. Camera angle changes can shift angle estimates.")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity, alignment: .leading)

@@ -122,21 +122,23 @@ enum Fmt {
     /// Integer form score; "—" when ungraded. Never decimals — pixel-derived
     /// data cannot honestly support them.
     static func score(_ x: Double) -> String { x.isFinite ? String(Int(x.rounded())) : "—" }
-    /// Session-relative swing speed: "92% of your fastest". Never px/s or mph.
-    static func relSpeed(_ ratio: Double) -> String {
-        ratio.isFinite ? "\(Int((ratio * 100).rounded()))% of your fastest" : "—"
+    /// Hand speed relative to the player's own hips. Never px/s or mph: it's
+    /// a 2D estimate, and only the body-relative unit is honest about that.
+    static func handSpeed(_ x: Double, compact: Bool = false) -> String {
+        guard x.isFinite else { return "—" }
+        return String(format: compact ? "%.0f/s" : "%.0f torso lengths/s", x)
     }
     /// A score component's underlying measurement, in the unit it's judged
     /// in. `compact` for tight columns (compare rows).
     static func component(_ kind: ShotScoreComponent.Kind, _ raw: Double, compact: Bool = false) -> String {
         guard raw.isFinite else { return "—" }
         switch kind {
-        case .swingSpeed: return compact ? "—" : relSpeed(raw)
-        case .kneeBend, .torsoStability, .elbowExtension: return deg(raw)
-        case .stanceWidth: return String(format: compact ? "%.2f×" : "%.2f× hips", raw)
-        case .prepFollowThrough:
+        case .swingSpeed: return handSpeed(raw, compact: compact)
+        case .kneeBend, .shoulderTurn, .shoulderTilt, .torsoStability, .elbowExtension: return deg(raw)
+        case .kineticChain:
             let pct = Int((raw * 100).rounded())
-            return compact ? "\(pct)%" : "\(pct)% smooth"
+            return compact ? "\(pct)%" : "\(pct)% of hand speed"
+        case .stanceWidth: return String(format: compact ? "%.2f×" : "%.2f× hips", raw)
         case .reach: return String(format: compact ? "%.1f×" : "hand %.1f× torso up", raw)
         case .finish: return Narrative.handHeight(raw)
         }

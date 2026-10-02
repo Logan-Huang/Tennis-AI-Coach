@@ -11,29 +11,98 @@ import Foundation
 
 /// The form thresholds the coaching prose speaks to — extracted so
 /// ShotScorer and Narrative use the IDENTICAL numbers (no drifting literals).
+///
+/// Every standard is absolute: what a well-struck stroke looks like, not
+/// this player's best of the day. A ramp's floor is where a first-timer's
+/// arm-only swing sits and its top is a sound, committed stroke, so full
+/// marks mean the body did its job. The targets come from published tennis
+/// biomechanics (Reid, Elliott & Crespo 2013, J Sports Sci Med 12:225 on the
+/// forehand; Landlinger et al. 2010, J Sports Sci Med 9:643; trophy-position
+/// knee flexion from Frontiers in Sports and Active Living 2024), then were
+/// checked on IMG_7145 (a competent player's forehands) and on the same
+/// forehand with the body frozen upright and unturned, the way a first-timer
+/// swings.
 nonisolated enum FormBands {
-    static let kneeIdeal: ClosedRange<Double> = 110...155
-    static let kneeSoft: ClosedRange<Double> = 90...175
+    /// Knee angle at the deepest point of the load before contact, estimated
+    /// from how far the hips sank (SwingKinematics) or measured where the leg
+    /// is side-on. Standing tall is 165-180°; a loaded groundstroke 115-140°.
+    static let kneeIdeal: ClosedRange<Double> = 115...140
+    static let kneeSoft: ClosedRange<Double> = 95...168
+    /// A serve sits lower in the trophy position before driving up: skilled
+    /// servers flex the front knee 64 ± 10° and the back 67 ± 16°, a knee
+    /// angle around 115°.
+    static let serveKneeIdeal: ClosedRange<Double> = 105...128
+    static let serveKneeSoft: ClosedRange<Double> = 90...160
+    /// Hips rising back toward standing height from the load to contact,
+    /// fraction of standing height: the legs pushing up into the shot.
+    static let legDriveFull: Double = 0.10
+    static let serveLegDriveFloor: Double = 0.03
+    static let serveLegDriveFull: Double = 0.15
+    /// Share of the knee component that is the drive rather than the load.
+    static let legDriveShare: Double = 0.25
+
+    /// Degrees the shoulders rotate from the end of the backswing to 0.3 s
+    /// after contact. Skilled players coil the shoulders about 110° from
+    /// parallel to the baseline (hips about 90°), are square to the net at
+    /// contact and keep turning into the finish; IMG_7145's forehands measure
+    /// 106-134°. An arm swing barely moves them, and a still player reads 0.
+    static let shoulderTurnFloor: Double = 40
+    static let shoulderTurnFull: Double = 120
+    /// Racquet shoulder's peak speed as a fraction of the hand's: how much of
+    /// the swing the trunk drove. Elite forehands move the shoulder at about
+    /// 3 m/s, a tenth of racquet speed and so about a fifth of the hand's;
+    /// IMG_7145 measures 0.15-0.18 and an arm swing about 0.05.
+    static let trunkShareFloor: Double = 0.06
+    static let trunkShareFull: Double = 0.20
+    /// The shoulder peaking this long after the hand is the arm leading.
+    static let lateShoulderS: Double = 0.04
+    static let lateShoulderFactor: Double = 0.6
+
+    /// Racquet hand's peak speed, torso lengths per second relative to the
+    /// hips, as the app measures it (2D and smoothed, which reads about 0.6 of
+    /// the true 3D speed). Racquet heads move at 21-24 m/s for club players
+    /// and about 33 m/s for professionals, the hand at about half that; with a
+    /// torso of about half a metre, that's 13 and 19 here. IMG_7145's rally
+    /// forehands measure 9-16.
+    static let speedFloor: Double = 5
+    static let speedFull: Double = 18
+    static let serveSpeedFloor: Double = 8
+    static let serveSpeedFull: Double = 26
+
+    /// The racquet shoulder's dip below the other in the trophy position,
+    /// degrees. Skilled servers incline the trunk about 25 ± 7° there; a
+    /// level-shouldered serve is all arm.
+    static let shoulderTiltFloor: Double = 8
+    static let shoulderTiltFull: Double = 25
+
     static let stanceIdeal: ClosedRange<Double> = 0.95...1.9
-    static let stanceSoft: ClosedRange<Double> = 0.6...2.6
+    /// An open-stance forehand can legitimately reach 2.5-3 hip widths.
+    static let stanceSoft: ClosedRange<Double> = 0.6...3.0
+    /// Torso lean the coaching text calls a fault, degrees.
     static let leanMax: Double = 22
-    static let elbowIdeal: ClosedRange<Double> = 75...155
-    static let elbowSoft: ClosedRange<Double> = 55...175
+    /// Torso lean scores 100 up to `leanFull` and 0 from `leanZero`.
+    static let leanFull: Double = 10
+    static let leanZero: Double = 35
+    /// Hitting elbow at contact. A straight-arm and a bent-arm forehand are
+    /// both sound (about 130° with an Eastern grip, 100° with a Western); an
+    /// arm jammed against the body is the fault.
+    static let elbowIdeal: ClosedRange<Double> = 95...178
+    static let elbowSoft: ClosedRange<Double> = 70...180
     /// A serve is struck with the arm close to straight.
-    static let serveElbowIdeal: ClosedRange<Double> = 145...180
-    static let serveElbowSoft: ClosedRange<Double> = 105...180
+    static let serveElbowIdeal: ClosedRange<Double> = 150...180
+    static let serveElbowSoft: ClosedRange<Double> = 110...180
     /// Serve reach: the hand's height above the shoulders at contact, in
     /// torso lengths. A fully extended arm puts it about 1.1-1.3 above; the
     /// labelled serves measured 0.82-1.13.
-    static let reachIdeal: Double = 0.95
-    static let reachFloor: Double = 0.4
+    static let reachIdeal: Double = 1.05
+    static let reachFloor: Double = 0.5
     /// Groundstroke finish: the hand's highest point in the half second after
     /// contact, torso lengths above the shoulders. A finish over the shoulder
-    /// brings the racquet wrist to about shoulder height (-0.15-0.45 on the
+    /// puts the racquet wrist at or above shoulder height (-0.15-0.45 on the
     /// labelled strokes); a swing that stops at the chest or the waist
     /// doesn't get there.
-    static let finishIdeal: Double = -0.15
-    static let finishFloor: Double = -0.75
+    static let finishIdeal: Double = 0.1
+    static let finishFloor: Double = -0.6
     /// Below this stroke count, session-level conclusions are provisional.
     static let minStrokesForConfidence = 4
 }

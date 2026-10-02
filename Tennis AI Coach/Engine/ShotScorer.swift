@@ -3,17 +3,20 @@
 //  Tennis AI Coach
 //
 //  Per-shot 0–100 form scoring over the existing analysis data. Pure compute,
-//  lazily invoked at display time — nothing here is persisted.
+//  lazily invoked at display time — nothing here is persisted, so every saved
+//  session is graded by the current rules.
 //
-//  Design rules (see plan):
-//  - Speed is scored ONLY relative to this session's fastest swing of the
-//    same kind (a backhand against the session's forehands would always look
-//    slow; a serve against them, always fast). Never across sessions.
-//  - Angle bands reuse FormBands — the same thresholds CoachingEngine speaks to.
+//  Design rules:
+//  - Fixed standards (FormBands), never this session's own best: an
+//    80 means the same thing for every player, every day.
+//  - The body's work is what's graded: how far the shoulders turned, how far
+//    the legs loaded and drove, how much of the swing the trunk drove, and
+//    how fast the hand moved as a result (SwingKinematics). A still, upright,
+//    arm-only swing breaks none of the old fault rules, and used to score
+//    in the 90s; now it can't run more than `powerMargin` above its power.
 //  - What a stroke is scored on depends on what it was: a serve on its leg
-//    load, reach and arm extension, a groundstroke on its base, balance and
-//    finish. Sessions from before strokes had a kind keep exactly the six
-//    components and weights they were scored with.
+//    drive, shoulder tilt, reach and arm extension, a groundstroke on its
+//    turn, legs, trunk, finish and base.
 //  - Missing data (NaN) drops a component; weights renormalize over survivors.
 //  - Tracking gate: joint coverage < 0.5 or < 3 surviving components → the
 //    shot is UNGRADED (overall = NaN) rather than a made-up number.
@@ -24,33 +27,31 @@ import Foundation
 nonisolated enum ShotScorer {
 
     // Nominal component weights (renormalized over surviving components).
-    // `W` is the original set, still used for strokes saved without a kind.
-    private enum W {
-        static let speed = 0.28
-        static let knee = 0.18
-        static let torso = 0.18
-        static let elbow = 0.12
-        static let stance = 0.10
-        static let prep = 0.14
-    }
-
     private enum Groundstroke {
-        static let speed = 0.24
+        static let speed = 0.20
+        static let shoulderTurn = 0.20
         static let knee = 0.16
-        static let torso = 0.14
-        static let elbow = 0.10
-        static let stance = 0.10
-        static let prep = 0.12
+        static let chain = 0.09
         static let finish = 0.14
+        static let elbow = 0.06
+        static let torso = 0.08
+        static let stance = 0.07
     }
 
     private enum Serve {
-        static let speed = 0.24
-        static let knee = 0.18
-        static let reach = 0.22
-        static let elbow = 0.18
-        static let prep = 0.18
+        static let speed = 0.22
+        static let knee = 0.22
+        static let reach = 0.18
+        static let tilt = 0.18
+        static let elbow = 0.20
     }
+
+    /// How far a shot's score may sit above the weighted mean of its power
+    /// components (`Kind.isPower`).
+    static let powerMargin = 12.0
+    /// The ceiling when none of the power components could be measured: the
+    /// form may be clean, but nothing shows the swing was any good.
+    static let unprovenCeiling = 70.0
 
     private static let minSurvivingComponents = 3
     private static let coverageGate = 0.5
@@ -62,24 +63,7 @@ nonisolated enum ShotScorer {
         let poses = result.poses
         guard !result.strokes.isEmpty, !frames.isEmpty else { return [] }
 
-        // Session-best speed reference: robust p95 over detected strokes of
-        // the same kind, or over all of them when a kind has only one. With
-        // < 2 strokes there is no meaningful "session best" — the lone stroke
-        // would always score 100 — so the component is dropped.
-        func reference(_ strokes: [Stroke]) -> Double {
-            strokes.count >= 2 ? NanStats.nanPercentile(strokes.map(\.peakSpeed), 95) : .nan
-        }
-        let overallRef = reference(result.strokes)
-        func speedRef(for stroke: Stroke) -> Double {
-            guard let kind = stroke.kind else { return overallRef }
-            let sameKind = reference(result.strokes.filter { $0.kind == kind })
-            if sameKind.isFinite { return sameKind }
-            // A lone forehand can still be measured against the backhands; a
-            // lone serve against nothing — serves and groundstrokes aren't the
-            // same motion, and Vision loses the wrist overhead more often.
-            guard kind != .serve else { return .nan }
-            return reference(result.strokes.filter { $0.kind != nil && $0.kind != .serve })
-        }
+        let kinematics = SwingKinematics.measure(result)
 
         // Same window the detector used: ±0.25 s in processed-frame steps.
         let win = max(1, NanStats.pythonRound(
@@ -91,13 +75,17 @@ nonisolated enum ShotScorer {
         for (i, f) in frames.enumerated() { indexByFrame[f.frameIndex] = i }
 
         return result.strokes.map { stroke in
-            scoreStroke(stroke,
-                        frames: frames,
-                        poses: poses,
-                        peakIndex: indexByFrame[stroke.peakFrame],
-                        win: win,
-                        speedRef: speedRef(for: stroke),
-                        hittingArm: result.hittingArm)
+            var body = kinematics[stroke.id] ?? SwingKinematics()
+            // Before the skeleton could give it (no poses), the detector's own
+            // speed, when it's in torso lengths rather than image pixels.
+            if !body.handSpeed.isFinite, result.hasBodyRelativeSpeeds {
+                body.handSpeed = stroke.peakSpeed
+            }
+            return scoreStroke(stroke,
+                               body: body,
+                               poses: poses,
+                               peakIndex: indexByFrame[stroke.peakFrame],
+                               win: win)
         }
     }
 
@@ -131,19 +119,17 @@ nonisolated enum ShotScorer {
     // MARK: - Per-stroke
 
     private static func scoreStroke(_ stroke: Stroke,
-                                    frames: [FrameMetrics],
+                                    body: SwingKinematics,
                                     poses: [PoseFrame],
                                     peakIndex: Int?,
-                                    win: Int,
-                                    speedRef: Double,
-                                    hittingArm: HittingArm) -> ShotScore {
+                                    win: Int) -> ShotScore {
         // Window bounds in processed-frame space (clamped like StrokeDetector).
         let p = peakIndex ?? 0
         let a = max(0, p - win)
-        let b = min(frames.count - 1, p + win)
+        let b = min(poses.count - 1, p + win)
 
         // Tracking coverage: mean fraction of the 12 joints present per
-        // window frame. Poses parallel frames; guard against length drift.
+        // window frame.
         var coverage = 0.0
         if peakIndex != nil, a <= b, !poses.isEmpty {
             var total = 0.0
@@ -156,48 +142,45 @@ nonisolated enum ShotScorer {
             coverage = count > 0 ? total / Double(count) : 0
         }
 
-        let prep = prepFollowComponent(frames: frames, poses: poses,
-                                       peakIndex: peakIndex, win: win,
-                                       hittingArm: hittingArm)
         let components: [ShotScoreComponent]
-        switch stroke.kind {
-        case nil:
+        if stroke.kind == .serve {
             components = [
-                speedComponent(stroke: stroke, ref: speedRef, weight: W.speed),
-                kneeComponent(stroke.minKnee, weight: W.knee),
-                torsoComponent(stroke: stroke, weight: W.torso),
-                elbowComponent(stroke.elbowMed, weight: W.elbow),
-                stanceComponent(stroke: stroke, weight: W.stance),
-                prep.weighted(W.prep),
-            ]
-        case .serve?:
-            components = [
-                speedComponent(stroke: stroke, ref: speedRef, weight: Serve.speed),
-                kneeComponent(stroke.loadKnee ?? .nan, weight: Serve.knee),
+                speedComponent(body.handSpeed, floor: FormBands.serveSpeedFloor,
+                               full: FormBands.serveSpeedFull, weight: Serve.speed),
+                kneeComponent(stroke: stroke, body: body, serve: true, weight: Serve.knee),
                 reachComponent(stroke: stroke, weight: Serve.reach),
+                ShotScoreComponent(kind: .shoulderTilt,
+                                   score: rampScore(body.shoulderTilt, from: FormBands.shoulderTiltFloor,
+                                                    to: FormBands.shoulderTiltFull),
+                                   weight: Serve.tilt, rawValue: body.shoulderTilt),
                 elbowComponent(stroke.contactElbow ?? .nan, weight: Serve.elbow,
                                ideal: FormBands.serveElbowIdeal, soft: FormBands.serveElbowSoft),
-                prep.weighted(Serve.prep),
             ]
-        case .forehand?, .backhand?, .groundstroke?:
+        } else {
+            // Forehands, backhands, unplaced groundstrokes, and strokes saved
+            // before strokes had kinds.
             components = [
-                speedComponent(stroke: stroke, ref: speedRef, weight: Groundstroke.speed),
-                kneeComponent(stroke.minKnee, weight: Groundstroke.knee),
-                torsoComponent(stroke: stroke, weight: Groundstroke.torso),
-                elbowComponent(stroke.elbowMed, weight: Groundstroke.elbow),
-                stanceComponent(stroke: stroke, weight: Groundstroke.stance),
-                prep.weighted(Groundstroke.prep),
+                speedComponent(body.handSpeed, floor: FormBands.speedFloor,
+                               full: FormBands.speedFull, weight: Groundstroke.speed),
+                ShotScoreComponent(kind: .shoulderTurn,
+                                   score: rampScore(body.shoulderTurn, from: FormBands.shoulderTurnFloor,
+                                                    to: FormBands.shoulderTurnFull),
+                                   weight: Groundstroke.shoulderTurn, rawValue: body.shoulderTurn),
+                kneeComponent(stroke: stroke, body: body, serve: false, weight: Groundstroke.knee),
+                chainComponent(body, weight: Groundstroke.chain),
                 finishComponent(stroke: stroke, weight: Groundstroke.finish),
+                elbowComponent(stroke.contactElbow ?? stroke.elbowMed, weight: Groundstroke.elbow),
+                torsoComponent(stroke: stroke, weight: Groundstroke.torso),
+                stanceComponent(stroke: stroke, weight: Groundstroke.stance),
             ]
         }
 
         let surviving = components.filter { $0.score.isFinite }
         var overall = Double.nan
         if coverage >= coverageGate, surviving.count >= minSurvivingComponents {
-            let weightSum = surviving.reduce(0) { $0 + $1.weight }
-            if weightSum > 0 {
-                overall = surviving.reduce(0) { $0 + $1.score * $1.weight } / weightSum
-            }
+            let mean = weightedMean(surviving)
+            let power = weightedMean(surviving.filter(\.kind.isPower))
+            overall = power.isFinite ? min(mean, power + powerMargin) : min(mean, unprovenCeiling)
         }
 
         return ShotScore(
@@ -212,33 +195,50 @@ nonisolated enum ShotScorer {
 
     // MARK: - Components
 
-    private static func speedComponent(stroke: Stroke, ref: Double, weight: Double) -> ShotScoreComponent {
-        var score = Double.nan
-        var ratio = Double.nan
-        if ref.isFinite, ref > 0, stroke.peakSpeed.isFinite {
-            ratio = stroke.peakSpeed / ref
-            // Session-relative: 40% of session best → 0, at/above best → 100.
-            score = clamp01((ratio - 0.40) / 0.60) * 100
-        }
-        return ShotScoreComponent(kind: .swingSpeed, score: score,
-                                  weight: weight, rawValue: ratio)
+    private static func speedComponent(_ speed: Double, floor: Double, full: Double,
+                                       weight: Double) -> ShotScoreComponent {
+        ShotScoreComponent(kind: .swingSpeed,
+                           score: rampScore(speed, from: floor, to: full),
+                           weight: weight, rawValue: speed)
     }
 
-    private static func kneeComponent(_ knee: Double, weight: Double) -> ShotScoreComponent {
-        ShotScoreComponent(kind: .kneeBend,
-                           score: bandScore(knee,
-                                            ideal: FormBands.kneeIdeal,
-                                            soft: FormBands.kneeSoft),
-                           weight: weight, rawValue: knee)
+    /// The load and the drive out of it. The knee angle is estimated from how
+    /// far the hips sank, which every camera angle shows; where the ankles
+    /// were out of view, the measured knee angle stands in, when the leg was
+    /// side-on enough to measure.
+    private static func kneeComponent(stroke: Stroke, body: SwingKinematics,
+                                      serve: Bool, weight: Double) -> ShotScoreComponent {
+        let ideal = serve ? FormBands.serveKneeIdeal : FormBands.kneeIdeal
+        let soft = serve ? FormBands.serveKneeSoft : FormBands.kneeSoft
+        var knee = body.kneeEstimate
+        var drive = Double.nan
+        if knee.isFinite {
+            drive = serve
+                ? rampScore(body.legDrive, from: FormBands.serveLegDriveFloor, to: FormBands.serveLegDriveFull)
+                : rampScore(body.legDrive, from: 0, to: FormBands.legDriveFull)
+        } else {
+            knee = stroke.loadKnee ?? stroke.minKnee
+        }
+        let load = bandScore(knee, ideal: ideal, soft: soft)
+        let score = drive.isFinite
+            ? (1 - FormBands.legDriveShare) * load + FormBands.legDriveShare * drive
+            : load
+        return ShotScoreComponent(kind: .kneeBend, score: score, weight: weight, rawValue: knee)
+    }
+
+    private static func chainComponent(_ body: SwingKinematics, weight: Double) -> ShotScoreComponent {
+        var score = rampScore(body.trunkShare, from: FormBands.trunkShareFloor, to: FormBands.trunkShareFull)
+        if score.isFinite, body.shoulderLead.isFinite, body.shoulderLead < -FormBands.lateShoulderS {
+            score *= FormBands.lateShoulderFactor
+        }
+        return ShotScoreComponent(kind: .kineticChain, score: score, weight: weight, rawValue: body.trunkShare)
     }
 
     private static func torsoComponent(stroke: Stroke, weight: Double) -> ShotScoreComponent {
         let lean = stroke.leanAbsMed
-        var score = Double.nan
-        if lean.isFinite {
-            // ≤8° quiet torso → 100; ≥30° → 0; linear between.
-            score = clamp01((30 - lean) / (30 - 8)) * 100
-        }
+        let score = lean.isFinite
+            ? clamp01((FormBands.leanZero - lean) / (FormBands.leanZero - FormBands.leanFull)) * 100
+            : .nan
         return ShotScoreComponent(kind: .torsoStability, score: score,
                                   weight: weight, rawValue: lean)
     }
@@ -268,7 +268,7 @@ nonisolated enum ShotScorer {
                                   weight: weight, rawValue: reach)
     }
 
-    /// Groundstrokes: 100 when the hand finishes at shoulder height or above.
+    /// Groundstrokes: 100 when the hand finishes above shoulder height.
     private static func finishComponent(stroke: Stroke, weight: Double) -> ShotScoreComponent {
         let finish = stroke.finish ?? .nan
         return ShotScoreComponent(kind: .finish,
@@ -276,67 +276,14 @@ nonisolated enum ShotScorer {
                                   weight: weight, rawValue: finish)
     }
 
-    /// Prep = fraction of pre-peak steps accelerating toward the peak (a clean
-    /// load, not stop-start). Follow-through = tracked, gradually-decaying
-    /// post-peak window. Both are within-shot and unit-free.
-    private static func prepFollowComponent(frames: [FrameMetrics],
-                                            poses: [PoseFrame],
-                                            peakIndex: Int?,
-                                            win: Int,
-                                            hittingArm: HittingArm) -> ShotScoreComponent {
-        guard let p = peakIndex else {
-            return ShotScoreComponent(kind: .prepFollowThrough, score: .nan,
-                                      weight: 0, rawValue: .nan)
-        }
-        let speeds = frames.map { $0.wristSpeed(for: hittingArm) }
-        let peakSpeed = speeds[p]
-
-        // Preparation: rising fraction over [p-win, p].
-        var rising = 0, prePairs = 0
-        var i = max(0, p - win)
-        while i < p {
-            if speeds[i].isFinite && speeds[i + 1].isFinite {
-                prePairs += 1
-                if speeds[i + 1] >= speeds[i] { rising += 1 }
-            }
-            i += 1
-        }
-
-        // Follow-through: tracked fraction + gradual decay over (p, p+win].
-        let end = min(frames.count - 1, p + win)
-        var tracked = 0, postCount = 0
-        var framesUntilHalf = 0
-        var reachedHalf = false
-        if end > p {
-            for j in (p + 1)...end {
-                postCount += 1
-                if j < poses.count, poses[j].hasAnyJoint { tracked += 1 }
-                if !reachedHalf {
-                    if speeds[j].isFinite, peakSpeed.isFinite, speeds[j] < 0.5 * peakSpeed {
-                        reachedHalf = true
-                    } else {
-                        framesUntilHalf += 1
-                    }
-                }
-            }
-        }
-
-        guard prePairs >= 2, postCount >= 2 else {
-            return ShotScoreComponent(kind: .prepFollowThrough, score: .nan,
-                                      weight: 0, rawValue: .nan)
-        }
-
-        let prepScore = Double(rising) / Double(prePairs)
-        let trackedFrac = Double(tracked) / Double(postCount)
-        let decayScore = min(1.0, Double(framesUntilHalf) / Double(win))
-        let followScore = 0.5 * trackedFrac + 0.5 * decayScore
-        let combined = (prepScore + followScore) / 2 * 100
-
-        return ShotScoreComponent(kind: .prepFollowThrough, score: combined,
-                                  weight: 0, rawValue: prepScore)
-    }
-
     // MARK: - Helpers
+
+    /// Weighted mean of the components' scores; NaN when there are none.
+    static func weightedMean(_ components: [ShotScoreComponent]) -> Double {
+        let weightSum = components.reduce(0) { $0 + $1.weight }
+        guard weightSum > 0 else { return .nan }
+        return components.reduce(0) { $0 + $1.score * $1.weight } / weightSum
+    }
 
     /// 100 inside `ideal`, tapering linearly to 0 at the `soft` bounds.
     static func bandScore(_ x: Double,
@@ -363,13 +310,5 @@ nonisolated enum ShotScorer {
 
     private static func clamp01(_ x: Double) -> Double {
         min(1, max(0, x))
-    }
-}
-
-nonisolated private extension ShotScoreComponent {
-    func weighted(_ w: Double) -> ShotScoreComponent {
-        var c = self
-        c.weight = w
-        return c
     }
 }

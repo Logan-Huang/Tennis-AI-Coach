@@ -32,6 +32,7 @@ struct ResultsView: View {
     private let headline: String
     private let focus: Narrative.Focus?
     private let findings: [FindingCount]
+    private let strengths: [String]
     private let strokeMix: [Narrative.KindSummary]
 
     init(session: Session) {
@@ -52,17 +53,11 @@ struct ResultsView: View {
         self.headline = Narrative.headline(session: rollup, shots: shots)
         self.focus = Narrative.focusNext(shots: shots)
         self.findings = Narrative.findingCounts(shots: shots)
+        self.strengths = Narrative.strengths(shots: shots)
         self.strokeMix = Narrative.strokeMix(shots)
     }
 
     private var result: AnalysisResult { session.result }
-
-    /// Median of per-shot speed ratios for the medians section.
-    private var relSpeedMedian: Double {
-        NanStats.nanMedian(shotScores.compactMap { shot in
-            shot.components.first { $0.kind == .swingSpeed }?.rawValue
-        })
-    }
 
     /// Debug hooks (Simulator UI verification — taps can't be injected there):
     /// `-reportScrollBottom` anchors the report scrolled to the end;
@@ -86,7 +81,7 @@ struct ResultsView: View {
                         videoCard
                             .id("video")
 
-                        CoachingSection(focus: focus, findings: findings, report: result.coaching)
+                        CoachingSection(focus: focus, findings: findings, strengths: strengths)
 
                         if !shotScores.isEmpty {
                             ShotListSection(
@@ -100,7 +95,7 @@ struct ResultsView: View {
                                 })
                         }
 
-                        MediansSection(result: result, relSpeedMedian: relSpeedMedian)
+                        MediansSection(result: result, shots: shotScores)
 
                         NavigationLink {
                             ChartsView(result: result, playback: playback, shotScores: shotScores)

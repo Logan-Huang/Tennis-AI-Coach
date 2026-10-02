@@ -4,10 +4,11 @@
 //
 //  Cross-session aggregates for the Home dashboard.
 //
-//  The honesty rule that makes trends valid: the cross-session FormTrendScore
-//  EXCLUDES the swing-speed component. Pixel speeds scale with resolution,
-//  zoom, and camera distance, so they never cross a session boundary — form
-//  angles are scale-invariant and do.
+//  What makes trends valid: every shot is graded against fixed standards, and
+//  swing speed is the hand's speed relative to the player's own hips in torso
+//  lengths, which doesn't change with resolution, zoom or camera distance. So a
+//  shot's score crosses session boundaries as it is. (Sessions analysed before
+//  speeds were body-relative get theirs from the saved skeleton.)
 //
 
 import Foundation
@@ -18,7 +19,7 @@ nonisolated enum ProgressEngine {
     struct SessionProgress: Identifiable, Sendable {
         let sessionId: UUID
         let date: Date
-        /// Speed-excluded form score (median across graded shots); NaN = ungraded session.
+        /// Median shot score across graded shots; NaN = ungraded session.
         let formScore: Double
         let gradedShots: Int
 
@@ -38,21 +39,12 @@ nonisolated enum ProgressEngine {
         var id: ShotScoreComponent.Kind { kind }
     }
 
-    // MARK: - Form score (speed-excluded)
+    // MARK: - Form score
 
-    /// Per-shot form-only score: surviving components minus swing speed,
-    /// weights renormalized. NaN when the shot is ungraded.
-    static func formOnlyScore(_ shot: ShotScore) -> Double {
-        guard shot.isGraded else { return .nan }
-        let surviving = shot.components.filter { $0.kind != .swingSpeed && $0.score.isFinite }
-        let weightSum = surviving.reduce(0) { $0 + $1.weight }
-        guard weightSum > 0, surviving.count >= 2 else { return .nan }
-        return surviving.reduce(0) { $0 + $1.score * $1.weight } / weightSum
-    }
-
-    /// Session-level form trend score: median of per-shot form-only scores.
+    /// Session-level trend score: the median graded shot score, the same
+    /// number the session's own report leads with.
     static func formTrendScore(shots: [ShotScore]) -> Double {
-        NanStats.nanMedian(shots.map(formOnlyScore))
+        NanStats.nanMedian(shots.filter(\.isGraded).map(\.overall))
     }
 
     // MARK: - Trend series
@@ -77,9 +69,9 @@ nonisolated enum ProgressEngine {
     // MARK: - Component ranges
 
     private static let trackedKinds: [(ShotScoreComponent.Kind, ClosedRange<Double>)] = [
-        (.kneeBend, 80...180),
-        (.torsoStability, 0...45),
-        (.elbowExtension, 50...180),
+        (.swingSpeed, 0...30),
+        (.shoulderTurn, 0...90),
+        (.kneeBend, 90...180),
     ]
 
     /// Recent min–max band + latest value per form component (raw units).

@@ -45,7 +45,7 @@ struct TrendCard: View {
                 }
             }
 
-            Text("Trend uses form only — swing speed isn't comparable across differently filmed sessions.")
+            Text("Every session is graded against the same standard, so the trend compares like with like. Camera angle changes can still shift estimates.")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }
@@ -87,7 +87,8 @@ struct TrendCard: View {
     private func currentText(_ item: ProgressEngine.ComponentTrend) -> String {
         guard item.current.isFinite else { return "—" }
         switch item.kind {
-        case .kneeBend, .torsoStability, .elbowExtension: return Fmt.deg(item.current)
+        case .kneeBend, .shoulderTurn, .torsoStability, .elbowExtension: return Fmt.deg(item.current)
+        case .swingSpeed: return Fmt.handSpeed(item.current, compact: true)
         case .stanceWidth: return String(format: "%.2f×", item.current)
         default: return Fmt.score(item.current)
         }

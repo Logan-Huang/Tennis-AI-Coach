@@ -102,14 +102,13 @@ struct ShotDetailView: View {
     }
 
     private var footnote: String {
-        var parts = ["Scores are a 2D estimate from video — indicative, not a measurement. Knee and elbow angles are only graded while that limb faces the camera side-on."]
+        var parts = ["Scores are a 2D estimate from video — indicative, not a measurement. Knee bend is estimated from how far your hips sank; the elbow is only graded while the arm faces the camera side-on."]
         switch stroke?.timing {
         case .heard?: parts.append("Contact was timed from the sound of the ball.")
         case .estimated?: parts.append("No ball sound was found, so contact was taken as your fastest wrist moment.")
         case nil: break
         }
-        let family = stroke?.kind.map { $0 == .serve ? "serve" : $0.displayName.lowercased() } ?? "swing"
-        parts.append("Swing speed is relative to your fastest \(family) this session.")
+        parts.append("Every part is graded against the same standard for every player, so a score can't be raised by a still, upright, arm-only swing.")
         return parts.joined(separator: " ")
     }
 

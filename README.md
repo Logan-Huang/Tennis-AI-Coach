@@ -32,9 +32,13 @@ dependencies. The only network traffic is AppsFlyer install attribution.
 - **Stroke detection** from body‑relative wrist speed, timed from the sound of
   the ball where the clip has one; each stroke classified as serve, forehand or
   backhand from where the hands are at contact.
-- **Stroke‑specific coaching**: serves scored on leg load, reach and arm
-  extension; groundstrokes on base, balance, elbow and finish. Speed is only
-  compared between strokes of the same kind.
+- **Scoring against fixed standards** (`SwingKinematics` + `ShotScorer`):
+  groundstrokes on hand speed, shoulder turn, knee load and leg drive, how much
+  of the swing the trunk drives, finish, contact spacing, balance and base;
+  serves on hand speed, leg drive, trophy‑position shoulder tilt, reach and arm
+  extension. The same standard for every player and session, and a shot can't
+  score more than 12 above its power (speed, turn, legs), so a still, upright,
+  arm‑only swing can't pass for a good one. `Scripts/scoring-eval` checks it.
 - **Results** in five tabs — Overview, Video (skeleton overlay), Charts,
   Strokes, and Coaching.
 - **Annotated MP4 export**: re‑renders the clip with the skeleton and a metric
@@ -66,6 +70,7 @@ dependencies. The only network traffic is AppsFlyer install attribution.
  StrokeDetector ─ heard contacts confirmed by a fast wrist + wrist‑only strokes
  StrokeAnatomy ─ serve / forehand / backhand, reach, finish, serve knee load
         ▼
+ SwingKinematics ─ shoulder turn, hip drop + leg drive, trunk share, tilt
  CoachingEngine / ShotScorer / Narrative ── scores + stroke‑aware coaching
         ▼
  AnalysisResult → Results UI  (+ AnnotatedVideoExporter for MP4)
@@ -89,6 +94,10 @@ the track's `preferredTransform` (the reader does **not** bake in the transform)
 | **Hitting arm** | The player profile's racquet hand; guessed from the clip (98th‑percentile image wrist speed) only when it isn't set. |
 | **Reach** | Serves: the higher hand's height above the shoulders at contact, in torso lengths. |
 | **Finish** | Groundstrokes: the higher hand's highest point in the 0.5 s after contact, relative to the shoulders. |
+| **Shoulder turn** | Degrees the shoulders rotate from the end of the backswing (the hand's slowest moment before contact, less 0.1 s) to 0.3 s after contact. The shoulder line's angle to the picture is arccos(apparent width ÷ full width), which a level camera shows from any side; since that angle folds at square‑on and side‑on, the turn is the path it travels, with reversals only counted when the width itself reverses by 15% (so tracking jitter near square‑on can't add up). Full width is never taken below 0.55 torso lengths. Skilled forehands coil about 110° and keep turning past contact; IMG_7145 measures 106–134°, a still player 0°. |
+| **Knee load / leg drive** | How far the hips sink toward the ankles before contact, and rise back through it, as a fraction of standing hip height; the drop is converted to the knee angle that would produce it. Vertical survives every camera angle where a 2D knee angle doesn't. |
+| **Trunk share** | The racquet shoulder's peak speed over the racquet wrist's, both relative to the hips: how much of the swing the body drove. |
+| **Shoulder tilt** | Serves: the racquet shoulder's dip below the other before contact, degrees. |
 
 Knee and elbow angles are only measured in frames where both segments of the
 limb show at least 80% of their full length (the limb is side‑on to the
@@ -138,7 +147,9 @@ Tennis AI Coach/
 │  ├─ Geometry.swift, NanStats.swift     angle math, NaN‑aware statistics
 │  ├─ StrokeDetector.swift               heard + wrist strokes
 │  ├─ StrokeAnatomy.swift                serve / forehand / backhand, reach, finish
-│  ├─ CoachingEngine.swift               medians → strengths/focus
+│  ├─ SwingKinematics.swift              turn, legs, trunk, tilt from the skeleton
+│  ├─ ShotScorer.swift                   components → shot score (fixed standards, power cap)
+│  ├─ CoachingEngine.swift               FormBands (every standard) + exported report
 │  ├─ AnnotatedVideoExporter.swift       skeleton + HUD → H.264 MP4 (UIKit)
 │  └─ Models/                            AnalysisModels.swift, AnalysisError.swift
 ├─ Library/        HomeView, ImportSheet, LibraryStore, PlayerProfile, SessionCard
@@ -244,8 +255,11 @@ Set each player's racquet hand on their profile.
   hand positions, and a groundstroke whose side can't be read stays unlabelled.
 - One player per clip: the person the camera follows. Film the other player
   separately and file it under their profile.
-- Wrist speed is relative to the body, but still a 2D, camera‑dependent
-  estimate, so it is only compared within one session (never in the trend).
+- Wrist speed is relative to the body, so it holds across distance and zoom,
+  but it is still 2D: a swing toward or away from the lens reads slower.
+- The standards were set against one competent player's forehands and a
+  synthetic arm‑only swing; serves and backhands haven't been checked against
+  labelled skill levels yet.
 - A serve with the hitting arm lost at contact can go unlabelled; smashes are
   labelled as serves.
 - Without sound (muted clip, loud music), strokes are timed from the wrist

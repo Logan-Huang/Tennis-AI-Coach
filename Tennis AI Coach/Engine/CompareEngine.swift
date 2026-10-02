@@ -72,7 +72,7 @@ nonisolated enum CompareEngine {
     }
 
     private static func side(_ shots: [ShotScore]) -> SideSummary {
-        let formScores = shots.map(ProgressEngine.formOnlyScore).filter(\.isFinite)
+        let formScores = shots.filter(\.isGraded).map(\.overall)
         return SideSummary(
             formScore: NanStats.nanMedian(formScores),
             best: formScores.max() ?? .nan,
@@ -84,7 +84,6 @@ nonisolated enum CompareEngine {
 
     private static func componentPairs(before: [ShotScore], after: [ShotScore]) -> [ComponentPair] {
         ShotScoreComponent.Kind.allCases
-            .filter { $0 != .swingSpeed }
             .compactMap { kind in
                 let b = medians(for: kind, in: before)
                 let a = medians(for: kind, in: after)
