@@ -163,6 +163,9 @@ final class LibraryStore {
         allSessions.count { $0.profileID == profile.id }
     }
 
+    /// No player on this device has a session yet.
+    var isEmpty: Bool { allSessions.isEmpty }
+
     /// A player's most recent graded form score, NaN if none.
     func latestFormScore(for profile: PlayerProfile) -> Double {
         let mine = allSessions.filter { $0.profileID == profile.id }

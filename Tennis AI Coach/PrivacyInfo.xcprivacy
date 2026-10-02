@@ -2,16 +2,36 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- The app's own code: it reports two milestones to AppsFlyer (App/Attribution.swift),
+	     which are matched to ads with the device's identifiers when tracking is allowed.
+	     AppsFlyer's framework declares what it collects itself, and its tracking domains,
+	     in its own manifest. -->
 	<key>NSPrivacyTracking</key>
-	<false/>
+	<true/>
 	<key>NSPrivacyTrackingDomains</key>
 	<array/>
 	<key>NSPrivacyCollectedDataTypes</key>
-	<array/>
+	<array>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeProductInteraction</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
+				<string>NSPrivacyCollectedDataTypePurposeDeveloperAdvertising</string>
+				<string>NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSPrivacyAccessedAPITypes</key>
 	<array>
 		<dict>
-			<!-- @AppStorage ("hasSeenOnboarding", "showFramingGuide") is UserDefaults-backed.
+			<!-- @AppStorage ("hasSeenOnboarding", "showFramingGuide") and the attribution
+			     milestones' flags are UserDefaults-backed.
 			     CA92.1 = read/write only values written by this app itself. -->
 			<key>NSPrivacyAccessedAPIType</key>
 			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>

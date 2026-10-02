@@ -3,9 +3,11 @@
 //  Tennis AI Coach
 //
 //  Install attribution through AppsFlyer: which ad, if any, brought someone to
-//  the app. Nothing about their tennis goes with it. No video, sound, pose,
-//  score or player name is handed to the SDK; it sends only what it collects
-//  itself, the device's identifiers and the app being opened.
+//  the app, and whether they went on to use it. Nothing about their tennis
+//  goes with it. No video, sound, pose, score or player name is handed to the
+//  SDK. Besides what it collects itself (the device's identifiers and the app
+//  being opened), it is told of two milestones, each once per install:
+//  finishing onboarding and the first video analyzed, with no details.
 //
 //  The dev key is not in the repository, which is public. It is read from
 //  AppsFlyerKeys.plist, a git-ignored file in the app folder that Xcode Cloud
@@ -71,7 +73,48 @@ enum Attribution {
 
     /// Onboarding just closed: time to ask.
     static func onboardingDidFinish() {
+        reach(.registered)
         askIfNeeded()
+    }
+
+    /// The first video on this device has been analyzed.
+    static func firstAnalysisFinished() {
+        reach(.firstAnalysis)
+    }
+
+    // MARK: - Milestones
+
+    /// What the ads are measured by beyond the install, so a campaign can be
+    /// judged, and optimized, by who goes on to use the app.
+    private enum Milestone: String, CaseIterable {
+        /// Onboarding finished and the player named: AppsFlyer's standard
+        /// registration event.
+        case registered = "af_complete_registration"
+        /// The first video analyzed on this device.
+        case firstAnalysis = "first_analysis"
+
+        var reachedKey: String { "attribution.reached.\(rawValue)" }
+        var pendingKey: String { "attribution.pending.\(rawValue)" }
+    }
+
+    /// Once per install. Kept until the SDK has started, across launches if
+    /// need be, since onboarding ends before the tracking prompt is answered.
+    private static func reach(_ milestone: Milestone) {
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: milestone.reachedKey) else { return }
+        defaults.set(true, forKey: milestone.reachedKey)
+        defaults.set(true, forKey: milestone.pendingKey)
+        sendPending()
+    }
+
+    private static func sendPending() {
+        guard started else { return }
+        let defaults = UserDefaults.standard
+        for milestone in Milestone.allCases where defaults.bool(forKey: milestone.pendingKey) {
+            log("reporting \(milestone.rawValue)")
+            AppsFlyerLib.shared().logEvent(milestone.rawValue, withValues: nil)
+            defaults.set(false, forKey: milestone.pendingKey)
+        }
     }
 
     /// Shows the prompt while its answer is unknown; after that, just starts.
@@ -112,6 +155,7 @@ enum Attribution {
         AppsFlyerLib.shared().start(completionHandler: { _, error in
             log(error.map { "AppsFlyer start failed: \($0.localizedDescription)" } ?? "AppsFlyer accepted the launch")
         })
+        sendPending()
     }
 
     private static var trackingStatus: String {

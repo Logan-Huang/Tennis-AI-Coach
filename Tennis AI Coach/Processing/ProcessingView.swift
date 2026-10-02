@@ -145,7 +145,9 @@ struct ProcessingView: View {
                 progress: { p in
                     Task { @MainActor in model.progress = p }
                 })
+            let isFirst = store.isEmpty
             let session = store.addSession(sourceVideoURL: videoURL, result: result, for: player)
+            if isFirst { Attribution.firstAnalysisFinished() }
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             router.showResults(session.id)
         } catch is CancellationError {

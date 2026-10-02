@@ -205,11 +205,13 @@ is handy for validating the pure engine off‑device.
 - **Analysis is 100% on‑device.** No accounts, and your video and results never
   leave the phone.
 - **Install attribution (AppsFlyer).** `App/Attribution.swift` starts the SDK
-  after onboarding, once Apple's tracking prompt has been answered; it sends
-  only what AppsFlyer collects itself (device identifiers, installs and app
-  opens). The dev key lives in the git‑ignored `AppsFlyerKeys.plist`, which
-  Xcode Cloud writes from the `APPSFLYER_DEV_KEY` secret
-  (`ci_scripts/ci_post_clone.sh`); builds without it skip the SDK.
+  after onboarding, once Apple's tracking prompt has been answered. Besides
+  what AppsFlyer collects itself (device identifiers, installs and app opens)
+  it reports two milestones once per install, `af_complete_registration` at
+  the end of onboarding and `first_analysis`, with no values attached. The
+  dev key lives in the git‑ignored `AppsFlyerKeys.plist`, which Xcode Cloud
+  writes from the `APPSFLYER_DEV_KEY` secret (`ci_scripts/ci_post_clone.sh`);
+  builds without it skip the SDK.
 - Analyzed sessions are saved under
   `Application Support/TennisAICoach/` — results as NaN‑safe JSON in `sessions/`,
   and a copy of each clip in `videos/`. Deleting a session removes both.
