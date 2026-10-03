@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		AF70000A2FD2421800D09897 /* AppsFlyerLib in Frameworks */ = {isa = PBXBuildFile; productRef = AF70000B2FD2421800D09897 /* AppsFlyerLib */; };
+		AF70000A2FD2421800D09897 /* AppsFlyerLib-Dynamic in Frameworks */ = {isa = PBXBuildFile; productRef = AF70000B2FD2421800D09897 /* AppsFlyerLib-Dynamic */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,7 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AF70000A2FD2421800D09897 /* AppsFlyerLib in Frameworks */,
+				AF70000A2FD2421800D09897 /* AppsFlyerLib-Dynamic in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -70,7 +70,7 @@
 			);
 			name = "Tennis AI Coach";
 			packageProductDependencies = (
-				AF70000B2FD2421800D09897 /* AppsFlyerLib */,
+				AF70000B2FD2421800D09897 /* AppsFlyerLib-Dynamic */,
 			);
 			productName = "Tennis AI Coach";
 			productReference = 02F94BFD2FD2421700D09897 /* TennisAI: Swing Coach.app */;
@@ -101,7 +101,7 @@
 			mainGroup = 02F94BF42FD2421700D09897;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				AF70000C2FD2421800D09897 /* XCRemoteSwiftPackageReference "AppsFlyerFramework" */,
+				AF70000C2FD2421800D09897 /* XCRemoteSwiftPackageReference "AppsFlyerFramework-Dynamic" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 02F94BFE2FD2421700D09897 /* Products */;
@@ -259,7 +259,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = 9UJHQ5349H;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -298,7 +298,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = 9UJHQ5349H;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -355,9 +355,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		AF70000C2FD2421800D09897 /* XCRemoteSwiftPackageReference "AppsFlyerFramework" */ = {
+		AF70000C2FD2421800D09897 /* XCRemoteSwiftPackageReference "AppsFlyerFramework-Dynamic" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/AppsFlyerSDK/AppsFlyerFramework";
+			repositoryURL = "https://github.com/AppsFlyerSDK/AppsFlyerFramework-Dynamic";
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 7.0.2;
@@ -366,10 +366,10 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		AF70000B2FD2421800D09897 /* AppsFlyerLib */ = {
+		AF70000B2FD2421800D09897 /* AppsFlyerLib-Dynamic */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = AF70000C2FD2421800D09897 /* XCRemoteSwiftPackageReference "AppsFlyerFramework" */;
-			productName = AppsFlyerLib;
+			package = AF70000C2FD2421800D09897 /* XCRemoteSwiftPackageReference "AppsFlyerFramework-Dynamic" */;
+			productName = "AppsFlyerLib-Dynamic";
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
